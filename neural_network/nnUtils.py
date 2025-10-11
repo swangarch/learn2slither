@@ -1,8 +1,10 @@
+#!/usr/bin/python3
+
 from numpy import ndarray as array
 import numpy as np
-import sys
 
-def create_bias(net_shape:tuple, value):
+
+def create_bias(net_shape: tuple, value: int | float) -> list:
     """Create bias for given network shape."""
 
     biases = []
@@ -11,7 +13,7 @@ def create_bias(net_shape:tuple, value):
     return biases
 
 
-def create_actives(net_shape:tuple, value):
+def create_actives(net_shape:tuple, value: int | float) -> list: 
     """Create bias for given network shape."""
 
     actives = []
@@ -20,7 +22,7 @@ def create_actives(net_shape:tuple, value):
     return actives
 
 
-def forward_layer(weights:array, activations:array, biases:array, activ_func):
+def forward_layer(weights:array, activations:array, biases:array, activ_func: callable) -> array:
     """Perform layer forwarding."""
 
     res = weights @ activations + biases
@@ -30,7 +32,7 @@ def forward_layer(weights:array, activations:array, biases:array, activ_func):
         return activ_func(res)
 
 
-def init_matrix(shapes: tuple, init_method: tuple):
+def init_matrix(shapes: tuple, init_method: tuple) -> list:
     """Init matrix in given shapes."""
 
     matrixs = []
@@ -45,7 +47,7 @@ def init_matrix(shapes: tuple, init_method: tuple):
     return matrixs
 
 
-def network(net: tuple, init_method: tuple):
+def network(net: tuple, init_method: tuple) -> list:
     """Init network weights."""
 
     return init_matrix(net, init_method)
@@ -67,20 +69,29 @@ def loss(func, truth, predict):
 
 
 def mse_loss(truth: array, predict: array):
-    """Calculate mse loss."""
+    """Calculate mean square error loss."""
 
     return 0.5 * np.mean((truth - predict) ** 2)
 
+
 def ce_loss(truth: array, predict: array):
-    """Calculate cross entropy loss."""
+    """Calculate categorical cross entropy loss."""
 
     eps = 1e-12
     predict = np.clip(predict, eps, 1 - eps)
     return -np.mean(np.sum(truth * np.log(predict), axis=1))
 
 
+def bce_loss(truth: array, predict: array):
+    """Calculate binary cross entropy loss."""
+
+    eps = 1e-12
+    predict = np.clip(predict, eps, 1 - eps)
+    return -np.mean(truth * np.log(predict) + (1 - truth) * np.log(1 - predict))
+
+
 def accuracy_1d(truth: array, predict: array):
-    """"""
+    """Calculate the accuracy, based on truth and prediction, output the raw value from neural network."""
 
     truth_flat = truth.reshape(-1)
     predict_flat = predict.reshape(-1)
@@ -90,7 +101,7 @@ def accuracy_1d(truth: array, predict: array):
 
 
 def shuffle_data(inputs, truths):
-    """Random shuffle the inputs and outputs data"""
+    """Random shuffle the inputs and outputs data."""
 
     indices = np.arange(len(inputs))
     np.random.shuffle(indices)
@@ -100,7 +111,9 @@ def shuffle_data(inputs, truths):
 
 
 def split_dataset(inputs, truths, ratio=0.8):
-    inputs, truths = shuffle_data(inputs, truths) #random shuffle
+    """Split inputs and truths data into training set and test set"""
+
+    inputs, truths = shuffle_data(inputs, truths)
     num_data = len(inputs)
     inputs_train = inputs[: int(num_data * ratio) - 1]
     truths_train = truths[: int(num_data * ratio) - 1]
@@ -109,6 +122,17 @@ def split_dataset(inputs, truths, ratio=0.8):
 
     return inputs_train, truths_train, inputs_test, truths_test
 
+
+def cmp_correct(result:array, truth:array, i:int) -> int:
+    """Compare the literal result of prediction with truth."""
+
+    print(f"IDX {i}  TRUTH {truth} => PRED {result}", end="")
+    if result == truth:
+        print("  \033[32mOK\033[0m")
+        return 1
+    else:
+        print("  \033[31mKO\033[0m")
+        return 0
 
 
 
