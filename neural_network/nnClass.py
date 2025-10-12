@@ -62,14 +62,14 @@ class NN:
             raise ValueError("Softmax only adapte to CategoricalCrossEntropy loss.")
 
 
-    def train_batch(self, inputs:array, truths:array, learning_rate:float=0.01) -> None:
+    def train_batch(self, states:array, Q_target:array, learning_rate:float=0.01) -> None:
         """Train a batch, the inputs and truths have to be already chunked into batch.
         This function will perform feed foward, back probagation, and gradient descent,
         the process to train the model.
         """
 
-        inputs_batch = inputs.T   # (batch_size, features) -> (features, batch_size)
-        truths_batch = truths.T
+        inputs_batch = states.T   # (batch_size, features) -> (features, batch_size)
+        truths_batch = Q_target.T
         # -----------------------------forward --------------------------------
         actives = [inputs_batch]
         Bgrads = []
@@ -86,15 +86,50 @@ class NN:
         else:
             local_grad = (actives[-1] - truths_batch) * activ_deriv(self.activ_funcs[-1], actives[-1], NN.deriv_map) # last layer difference
         Bgrads.append(np.mean(local_grad, axis=1, keepdims=True))
-        Wgrads.append(local_grad @ actives[-2].T / len(inputs))
+        Wgrads.append(local_grad @ actives[-2].T / len(states))
     
         for i in range(self.len_nets - 1, 0, -1):
             grad_prev_layer = self.nets[i].T @ local_grad  #cal the loss of prev layer
             local_grad = grad_prev_layer * activ_deriv(self.activ_funcs[i - 1], actives[i], NN.deriv_map) 
             Bgrads.append(np.mean(local_grad, axis=1, keepdims=True))
-            Wgrads.append(local_grad @ actives[i - 1].T / len(inputs))
+            Wgrads.append(local_grad @ actives[i - 1].T / len(states))
         # -----------------------------back probab end-----------------------------
         gradient_descent(self.nets, self.biases, Wgrads[::-1], Bgrads[::-1], learning_rate)
+
+
+    # def train_batch(self, inputs:array, truths:array, learning_rate:float=0.01) -> None:
+    #     """Train a batch, the inputs and truths have to be already chunked into batch.
+    #     This function will perform feed foward, back probagation, and gradient descent,
+    #     the process to train the model.
+    #     """
+
+    #     inputs_batch = inputs.T   # (batch_size, features) -> (features, batch_size)
+    #     truths_batch = truths.T
+    #     # -----------------------------forward --------------------------------
+    #     actives = [inputs_batch]
+    #     Bgrads = []
+    #     Wgrads = []
+    #     for i in range(self.len_nets):
+    #         actives.append(forward_layer(self.nets[i], actives[i], self.biases[i], self.activ_funcs[i]))
+    #     # -----------------------------forward end-----------------------------
+    #     # -----------------------------back probab --------------------------------
+    #     # Last layer
+    #     if self.loss_func == "CategoricalCrossEntropy" and self.activ_funcs[-1] == softmax:
+    #         local_grad = actives[-1] - truths_batch
+    #     elif self.loss_func == "BinaryCrossEntropy" and self.activ_funcs[-1] == sigmoid:
+    #         local_grad = actives[-1] - truths_batch
+    #     else:
+    #         local_grad = (actives[-1] - truths_batch) * activ_deriv(self.activ_funcs[-1], actives[-1], NN.deriv_map) # last layer difference
+    #     Bgrads.append(np.mean(local_grad, axis=1, keepdims=True))
+    #     Wgrads.append(local_grad @ actives[-2].T / len(inputs))
+    
+    #     for i in range(self.len_nets - 1, 0, -1):
+    #         grad_prev_layer = self.nets[i].T @ local_grad  #cal the loss of prev layer
+    #         local_grad = grad_prev_layer * activ_deriv(self.activ_funcs[i - 1], actives[i], NN.deriv_map) 
+    #         Bgrads.append(np.mean(local_grad, axis=1, keepdims=True))
+    #         Wgrads.append(local_grad @ actives[i - 1].T / len(inputs))
+    #     # -----------------------------back probab end-----------------------------
+    #     gradient_descent(self.nets, self.biases, Wgrads[::-1], Bgrads[::-1], learning_rate)
 
 
     def inference(self, inputs:array) -> array:

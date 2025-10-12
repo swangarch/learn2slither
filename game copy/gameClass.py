@@ -19,7 +19,7 @@ class SnakeGame():
         self.running = True
         self.hit = False
         self.tick_time = 10
-        self.reward = 0
+        self.score = 0
     
         self.site_state = create_matrix(self.snake, self.collectible, self.SIZE)
         print(self.site_state.reshape((self.SIZE, self.SIZE)))
@@ -27,7 +27,7 @@ class SnakeGame():
         # memory pool
         self.states = []
         self.actions = []
-        self.rewards = []
+        self.scores = []
         self.after_states = []
 
 
@@ -66,47 +66,23 @@ class SnakeGame():
             self.check_out_of_bounds(new_pos)
             
             # if at the end of this turn, snake lost, init a new turn
-            if self.reward == -0.9:
+            if self.score == -0.9:
                 self.snake, self.collectible, self.currDir, self.player_pos = init_state()
+                self.score += -0.9
                 iteration += 1
-            
-            # -------------------------------------------------
+
             # record history
-            self.states.append(site_state)
-            self.actions.append(currDirIdx)
-            self.rewards.append(self.reward)
-            self.after_states.append(create_matrix(self.snake, self.collectible, self.SIZE))
+            self.states.append(site_state) #!!!!!!!!!!!!!!!!!!!!!
+            self.actions.append(currDirIdx) #!!!!!!!!!!!!!!!!!!!!
+            self.scores.append(self.score) #!!!!!!!!!!!!!!!!!!!!!
+            self.after_states.append(create_matrix(self.snake, self.collectible, self.SIZE)) #!!!!!!!!!!!!!!!!!!!!!!!!!
 
-            # 转换成numpy数组
-            states_array = np.array(self.states)  # shape: [N, SIZE, SIZE]
-            actions_array = np.array(self.actions)  # shape: [N,]
-            rewards_array = np.array(self.rewards)  # shape: [N,]
-            next_states_array = np.array(self.after_states)  # shape: [N, SIZE, SIZE]
-
-            # 预测Q值
-            states_flat = states_array.reshape(len(states_array), -1)  # [N, 10, 10] -> [N, 100]
-            next_states_flat = next_states_array.reshape(len(next_states_array), -1)
-
-            Q_current = dqn.inference(states_array)  # shape: [N, 4]
-            Q_next = dqn.inference(next_states_array)  # shape: [N, 4]
-
-            # 计算目标Q值
-            gamma = 0.99
-            Q_target = Q_current.copy()  # 先复制一份
-
-            # 只更新执行过的动作对应的Q值
-            for i in range(len(actions_array)):
-                action = actions_array[i]
-                reward = rewards_array[i]
-                Q_target[i, action] = reward + gamma * np.max(Q_next[i])
-            
-
-            # -------------------------------------------------
-            print(states_array.shape)
             # train the model using history
             if iteration % 5 == 1:
                 for i in range(100):
-                    dqn.train_batch_rl(states_array, Q_target, 0.001)
+                    dqn.train_batch_rl(np.squeeze(np.array(self.states), axis=-1), 
+                                    np.array(self.scores).reshape(-1, 1), 
+                                    0.00001)
 
             # update display
             self.update_display()
@@ -119,7 +95,7 @@ class SnakeGame():
             self.screen.fill("yellow")
         else:
             self.screen.fill("cyan")
-        self.reward = -0.1
+        self.score = -0.1
         # Update matrix, and object on matrix based on snake, and collectible state
         site_state = create_matrix(self.snake, self.collectible, self.SIZE)
         return site_state
@@ -128,7 +104,7 @@ class SnakeGame():
     def check_self_collision(self, new_pos):
         for node in self.snake:
             if new_pos[0] == node[0] and new_pos[1] == node[1]:
-                self.reward = -0.9
+                self.score = -0.9
                 break
 
 
@@ -138,7 +114,7 @@ class SnakeGame():
             if new_pos[0] == item[0] and new_pos[1] == item[1]:
                 hit_collectible = True
                 self.collectible.pop(i)
-                self.reward = 1
+                self.score = 1
                 add_collectible(self.collectible, self.snake, self.SIZE)
                 break
         # if not hit a collectible, remove the last node, to keep snake length
@@ -149,7 +125,7 @@ class SnakeGame():
     def update_display(self):
         draw_snake(self.screen, self.snake, self.radius)
         draw_item(self.screen, self.collectible, self.radius)
-        print("[SCORE]", self.reward, "[MEM_LEN]", len(self.states))
+        print("[SCORE]", self.score, "[MEM_LEN]", len(self.states))
         pygame.display.flip()
         self.clock.tick(self.tick_time)
 
@@ -162,7 +138,7 @@ class SnakeGame():
     
     def check_out_of_bounds(self, new_pos) -> bool:
         if new_pos[0] >= self.SIZE or new_pos[0] <= 0 or new_pos[1] >= self.SIZE or new_pos[1] <= 0:
-            self.reward = -0.9
+            self.score = -0.9
             return True
         return False
     
