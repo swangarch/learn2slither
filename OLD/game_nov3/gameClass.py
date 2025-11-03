@@ -8,18 +8,15 @@ from collections import deque
 class SnakeGame():
     def __init__(self):
         self.SIZE = 10
-
-        self.render = False
+        pygame.init()
         self.dirs  =  [(0, -1), (0, 1), (-1, 0),  (1, 0)]
         self.ground_size = 20
 
         self.snake, self.collectible, self.currDir, self.player_pos = init_state()
         self.dirIdx = 0
         self.radius = 10
-        if self.render == True:
-            pygame.init()
-            self.screen = pygame.display.set_mode((self.ground_size * self.SIZE, self.ground_size * self.SIZE))
-            self.clock = pygame.time.Clock()
+        self.screen = pygame.display.set_mode((self.ground_size * self.SIZE, self.ground_size * self.SIZE))
+        self.clock = pygame.time.Clock()
         self.running = True
         self.hit = False
         self.tick_time = 5000
@@ -40,7 +37,7 @@ class SnakeGame():
         self.epsilon = 1
 
 
-    def loop(self, running):
+    def loop(self, running, visualize):
 
         # create a neural network
         dqn, conf = create_dqn()
@@ -50,8 +47,7 @@ class SnakeGame():
             # reset game logic
 
             site_state = self.reset_loop(iteration)
-            if self.render == True:
-                running, dirIdx = self.event_handler()
+            running, dirIdx = self.event_handler()
             
             if self.epsilon > 0.1:
                 self.epsilon -= 0.0001
@@ -116,15 +112,14 @@ class SnakeGame():
             for i in range(5):
                 dqn.train_batch_rl(states_array, Q_target, 0.002)
 
+            # update display
             self.update_display(currDirIdx, iteration)
-        if self.render == True:
-            pygame.quit()
+        pygame.quit()
         dqn.save_plots()
 
 
     def reset_loop(self, iteration):
-        if self.render == True:
-            self.screen.fill("yellow")
+        self.screen.fill("yellow")
         self.reward = -0.01
         # Update matrix, and object on matrix based on snake, and collectible state
         site_state = create_matrix(self.snake, self.collectible, self.SIZE)
@@ -153,17 +148,15 @@ class SnakeGame():
 
         
     def update_display(self, currDir, iteration):
-        if self.render == True:
-            draw_snake(self.screen, self.snake, self.radius)
-            draw_item(self.screen, self.collectible, self.radius)
+        draw_snake(self.screen, self.snake, self.radius)
+        draw_item(self.screen, self.collectible, self.radius)
         print("[ITER]", iteration, "[DIR]", currDir, "[SCORE]", self.reward, "[MEM_LEN]", len(self.states), end="")
         print(" [SNAKE]", end="")
         for i in range(len(self.snake)):
             print("=", end="")
         print()
-        if self.render == True:
-            pygame.display.flip()
-            self.clock.tick(self.tick_time)
+        pygame.display.flip()
+        self.clock.tick(self.tick_time)
 
 
     def pred_direction(self, dqn, site_state):
