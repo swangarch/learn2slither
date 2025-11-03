@@ -1,6 +1,6 @@
 import pygame
 import numpy as np
-from game import *
+from game20 import *
 from .dqn import create_dqn
 import random as rd
 from collections import deque
@@ -8,11 +8,9 @@ from collections import deque
 class SnakeGame():
     def __init__(self):
         self.SIZE = 10
-
-        self.render = False
+        self.render = True
         self.dirs  =  [(0, -1), (0, 1), (-1, 0),  (1, 0)]
         self.ground_size = 20
-
         self.snake, self.collectible, self.currDir, self.player_pos = init_state()
         self.dirIdx = 0
         self.radius = 10
@@ -24,38 +22,31 @@ class SnakeGame():
         self.hit = False
         self.tick_time = 5000
         self.reward = 0
-    
         self.site_state = create_matrix(self.snake, self.collectible, self.SIZE)
         print(self.site_state.reshape((self.SIZE, self.SIZE)))
 
         # memory pool
-
-        self.memlen = 3000
-
+        self.memlen = 1000
         self.states = deque(maxlen=self.memlen)
         self.actions = deque(maxlen=self.memlen)
         self.rewards = deque(maxlen=self.memlen)
         self.after_states = deque(maxlen=self.memlen)
-
+        
         self.epsilon = 1
 
 
     def loop(self, running):
-
         # create a neural network
         dqn, conf = create_dqn()
         iteration = 0
 
         while running:
             # reset game logic
-
             site_state = self.reset_loop(iteration)
             if self.render == True:
                 running, dirIdx = self.event_handler()
-            
             if self.epsilon > 0.1:
-                self.epsilon -= 0.0001
-
+                self.epsilon -= 0.0005
             # use neural network to choose the direction, based on site state
             if rd.random() > self.epsilon:
                 currDirIdx = self.pred_direction(dqn, site_state)

@@ -1,4 +1,4 @@
-from game import *
+from game20 import *
 
 
 def main():

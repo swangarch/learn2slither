@@ -1,57 +1,63 @@
 import pygame
 import numpy as np
-from game import *
+from game20 import *
 from .dqn import create_dqn
 import random as rd
 from collections import deque
+import sys
 
 class SnakeGame():
     def __init__(self):
         self.SIZE = 10
-        pygame.init()
+        self.render = True
         self.dirs  =  [(0, -1), (0, 1), (-1, 0),  (1, 0)]
         self.ground_size = 20
-
         self.snake, self.collectible, self.currDir, self.player_pos = init_state()
         self.dirIdx = 0
         self.radius = 10
-        self.screen = pygame.display.set_mode((self.ground_size * self.SIZE, self.ground_size * self.SIZE))
-        self.clock = pygame.time.Clock()
+        if self.render == True:
+            pygame.init()
+            self.screen = pygame.display.set_mode((self.ground_size * self.SIZE, self.ground_size * self.SIZE))
+            self.clock = pygame.time.Clock()
         self.running = True
         self.hit = False
         self.tick_time = 5000
         self.reward = 0
-    
         self.site_state = create_matrix(self.snake, self.collectible, self.SIZE)
         print(self.site_state.reshape((self.SIZE, self.SIZE)))
 
         # memory pool
-
-        self.memlen = 3000
-
+        self.memlen = 1000
         self.states = deque(maxlen=self.memlen)
         self.actions = deque(maxlen=self.memlen)
         self.rewards = deque(maxlen=self.memlen)
         self.after_states = deque(maxlen=self.memlen)
-
+        
         self.epsilon = 1
 
 
-    def loop(self, running, visualize):
+    def getState20(self, site_state):
+        site_state2d = site_state.copy().reshape(10, -1)
+        i, j = np.argwhere(site_state2d == 1)[0]  # 直接找到索引
+        row = site_state2d[i, :]
+        col = site_state2d[:, j]
 
+        state20 = np.hstack([row, col])
+        return state20
+
+
+    def loop(self, running):
         # create a neural network
         dqn, conf = create_dqn()
         iteration = 0
 
         while running:
             # reset game logic
-
             site_state = self.reset_loop(iteration)
-            running, dirIdx = self.event_handler()
-            
+            if self.render == True:
+                running, dirIdx = self.event_handler()
             if self.epsilon > 0.1:
-                self.epsilon -= 0.0001
-
+                self.epsilon -= 0.0005
             # use neural network to choose the direction, based on site state
             if rd.random() > self.epsilon:
                 currDirIdx = self.pred_direction(dqn, site_state)
@@ -80,16 +86,30 @@ class SnakeGame():
             
             # -------------------------------------------------
             # record history
-            self.states.append(site_state)
+            # site_state2d = site_state.copy().reshape(10, -1)
+            # i, j = np.argwhere(site_state2d == 1)[0]  # 直接找到索引
+            # row = site_state2d[i, :]
+            # col = site_state2d[:, j]
+
+            state20 = self.getState20(site_state)
+
+            self.states.append(state20)
             self.actions.append(currDirIdx)
             self.rewards.append(self.reward)
-            self.after_states.append(create_matrix(self.snake, self.collectible, self.SIZE))
+            after_matrix = create_matrix(self.snake, self.collectible, self.SIZE)
+            # print(self.getState20(after_matrix).shape)
+            # sys.exit(1)
+            self.after_states.append(self.getState20(after_matrix))
 
             # 转换成numpy数组
-            states_array = np.array(self.states).squeeze(axis=-1)  # shape: [N, SIZE]
+            # print(np.array(self.states).shape)
+            # sys.exit(1)
+            states_array = np.array(self.states)  # shape: [N, SIZE]
+            # print(states_array.shape)
             actions_array = np.array(self.actions).reshape(-1, 1)  # shape: [N,]
             rewards_array = np.array(self.rewards).reshape(-1, 1)  # shape: [N,]
-            next_states_array = np.array(self.after_states).squeeze(axis=-1)   # shape: [N, SIZE]
+            next_states_array = np.array(self.after_states)  # shape: [N, SIZE]
+            # print(next_states_array.shape)
 
             # print(states_array.shape, actions_array.shape, rewards_array.shape, next_states_array.shape)
 
@@ -112,14 +132,15 @@ class SnakeGame():
             for i in range(5):
                 dqn.train_batch_rl(states_array, Q_target, 0.002)
 
-            # update display
             self.update_display(currDirIdx, iteration)
-        pygame.quit()
+        if self.render == True:
+            pygame.quit()
         dqn.save_plots()
 
 
     def reset_loop(self, iteration):
-        self.screen.fill("yellow")
+        if self.render == True:
+            self.screen.fill("yellow")
         self.reward = -0.01
         # Update matrix, and object on matrix based on snake, and collectible state
         site_state = create_matrix(self.snake, self.collectible, self.SIZE)
@@ -148,19 +169,21 @@ class SnakeGame():
 
         
     def update_display(self, currDir, iteration):
-        draw_snake(self.screen, self.snake, self.radius)
-        draw_item(self.screen, self.collectible, self.radius)
+        if self.render == True:
+            draw_snake(self.screen, self.snake, self.radius)
+            draw_item(self.screen, self.collectible, self.radius)
         print("[ITER]", iteration, "[DIR]", currDir, "[SCORE]", self.reward, "[MEM_LEN]", len(self.states), end="")
         print(" [SNAKE]", end="")
         for i in range(len(self.snake)):
             print("=", end="")
         print()
-        pygame.display.flip()
-        self.clock.tick(self.tick_time)
+        if self.render == True:
+            pygame.display.flip()
+            self.clock.tick(self.tick_time)
 
 
     def pred_direction(self, dqn, site_state):
-        predict_dir_idx = dqn.inference(site_state.T).argmax(axis=1, keepdims=True)[0][0]
+        predict_dir_idx = dqn.inference(self.getState20(site_state).T).argmax(axis=1, keepdims=True)[0][0]
         return predict_dir_idx
 
     

@@ -71,6 +71,7 @@ def dqn_train(nn, conf, inputs, truths):
              threshold=conf["threshold"],
              animation=conf["animation"])
     nn.save_plots()
+    nn.save_weights()
 
 
 def create_dqn():
