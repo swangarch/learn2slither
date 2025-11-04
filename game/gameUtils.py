@@ -13,7 +13,7 @@ def create_matrix(snake, collectible, size):
 			site[node[0]][node[1]] = 0.5
 	
 	for col in collectible:
-		site[col[0]][col[1]] = 0.2
+		site[col[0]][col[1]] = -1
 	return site.reshape(-1, 1)
 
 
@@ -52,7 +52,7 @@ def add_collectible(collectible, snake, size):
 		x, y = rd.randint(1, size - 1), rd.randint(1, size - 1)
 		onsnake = False
 		for node in snake:
-			if node[0] == x or node[1] == y:
+			if node[0] == x and node[1] == y:
 				onsnake = True
 		
 		if onsnake == False:

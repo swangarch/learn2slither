@@ -1,14 +1,16 @@
 import pygame
 import numpy as np
-from game20 import *
+from game import *
 from .dqn import create_dqn
 import random as rd
 from collections import deque
+import sys
+
 
 class SnakeGame():
-    def __init__(self):
+    def __init__(self, render=False, weights=None):
         self.SIZE = 10
-        self.render = True
+        self.render = render
         self.dirs  =  [(0, -1), (0, 1), (-1, 0),  (1, 0)]
         self.ground_size = 20
         self.snake, self.collectible, self.currDir, self.player_pos = init_state()
@@ -26,131 +28,192 @@ class SnakeGame():
         print(self.site_state.reshape((self.SIZE, self.SIZE)))
 
         # memory pool
-        self.memlen = 1000
-        self.states = deque(maxlen=self.memlen)
-        self.actions = deque(maxlen=self.memlen)
-        self.rewards = deque(maxlen=self.memlen)
-        self.after_states = deque(maxlen=self.memlen)
+        self.memlen_max = 500
+        self.states = deque(maxlen=self.memlen_max)
+        self.actions = deque(maxlen=self.memlen_max)
+        self.rewards = deque(maxlen=self.memlen_max)
+        self.after_states = deque(maxlen=self.memlen_max)
+        self.dones = deque(maxlen=self.memlen_max)
         
         self.epsilon = 1
+        self.gamma = 0.9
 
+        self.collection_dist = None
+        self.done = False
+        self.model, conf = create_dqn()
+        if weights is not None:
+            self.model.load_weights(weights)
+        self.max_len = 3
+
+
+    def select_move_dir(self, site_state):
+        if rd.random() > self.epsilon:
+            currDirIdx = self.pred_direction(self.model, site_state)
+        else:
+            currDirIdx = rd.randint(0, 3)
+        currDir = self.dirs[currDirIdx]
+        return currDir, currDirIdx
+
+
+    def cal_Q_target(self, states_array, next_states_array, actions_array, rewards_array):
+        Q_current = self.model.inference(states_array)  # shape: [N, 4]
+        Q_next = self.model.inference(next_states_array)  # shape: [N, 4]
+        Q_target = Q_current.copy()
+        for i in range(len(actions_array)):
+            action = actions_array[i]
+            reward = rewards_array[i]
+            if self.dones[i] == True:
+                Q_target[i, action[0]] = reward
+            else:
+                Q_target[i, action[0]] = reward + self.gamma * np.max(Q_next[i])
+        return Q_target
+
+
+    def add_to_mem_pool(self, site_state, currDirIdx):
+        self.states.append(site_state)
+        self.actions.append(currDirIdx)
+        self.rewards.append(self.reward)
+        self.after_states.append(create_matrix(self.snake, self.collectible, self.SIZE))
+        self.dones.append(self.done)
+
+        # convert to numpy arr
+        states_array = np.array(self.states).squeeze(axis=-1)  # shape: [N, SIZE]
+        actions_array = np.array(self.actions).reshape(-1, 1)  # shape: [N,]
+        rewards_array = np.array(self.rewards).reshape(-1, 1)  # shape: [N,]
+        next_states_array = np.array(self.after_states).squeeze(axis=-1)   # shape: [N, SIZE]
+        return states_array, next_states_array, actions_array, rewards_array
+
+
+    def get_training_batch(self, inputs, target, batch_size=100):
+        total_samples = inputs.shape[0]
+    
+        # random choose some sample for mini batch training, or use all sample, if ther are not many
+        if total_samples <= batch_size:
+            sampled_inputs = inputs
+            sampled_target = target
+        else:
+            indices = np.random.choice(total_samples, batch_size, replace=False)
+            sampled_inputs = inputs[indices]
+            sampled_target = target[indices]
+        return sampled_inputs, sampled_target
+
+    def adjust_lr(self, iteration):
+        if iteration > 10000:
+            lr = 0.001
+        elif iteration > 5000:
+            lr = 0.002
+        else:
+            lr = 0.005
+        return lr
 
     def loop(self, running):
-        # create a neural network
-        dqn, conf = create_dqn()
         iteration = 0
-
         while running:
-            # reset game logic
-            site_state = self.reset_loop(iteration)
-            if self.render == True:
-                running, dirIdx = self.event_handler()
-            if self.epsilon > 0.1:
-                self.epsilon -= 0.0005
-            # use neural network to choose the direction, based on site state
-            if rd.random() > self.epsilon:
-                currDirIdx = self.pred_direction(dqn, site_state)
-            else:
-                currDirIdx = rd.randint(0, 3)
-            currDir = self.dirs[currDirIdx]
+            try:
+                site_state = self.reset_loop(iteration)
+                if self.render == True:
+                    running, dirIdx = self.event_handler()
 
-            # update head position based on the direction choosen by neural network
-            new_pos = [self.player_pos[0] + currDir[0], self.player_pos[1] + currDir[1]]
-            
-            # update snake head position
-            self.player_pos = new_pos
-            # if snake head has collision with snake body, add punishment, and stop this turn
-            self.check_self_collision(new_pos)
-            #update snake node
-            self.snake.insert(0, new_pos)
-            # if snake hit a collectible, add new node to body
-            self.collect_item(new_pos)
-            # if snake out of boundary, add punishment
-            self.check_out_of_bounds(new_pos)
-            
-            # if at the end of this turn, snake lost, init a new turn
-            if self.reward == -0.9:
-                self.snake, self.collectible, self.currDir, self.player_pos = init_state()
-                iteration += 1
-            
-            # -------------------------------------------------
-            # record history
-            self.states.append(site_state)
-            self.actions.append(currDirIdx)
-            self.rewards.append(self.reward)
-            self.after_states.append(create_matrix(self.snake, self.collectible, self.SIZE))
+                # determine if choose random step or choose a step predicted by dqn
+                self.epsilon = max(0.05, self.epsilon * 0.995)
 
-            # 转换成numpy数组
-            states_array = np.array(self.states).squeeze(axis=-1)  # shape: [N, SIZE]
-            actions_array = np.array(self.actions).reshape(-1, 1)  # shape: [N,]
-            rewards_array = np.array(self.rewards).reshape(-1, 1)  # shape: [N,]
-            next_states_array = np.array(self.after_states).squeeze(axis=-1)   # shape: [N, SIZE]
+                currDir, currDirIdx = self.select_move_dir(site_state)
+                new_pos = [self.player_pos[0] + currDir[0], self.player_pos[1] + currDir[1]]
+                iteration += self.handle_step(new_pos)
 
-            # print(states_array.shape, actions_array.shape, rewards_array.shape, next_states_array.shape)
-
-            Q_current = dqn.inference(states_array)  # shape: [N, 4]
-            Q_next = dqn.inference(next_states_array)  # shape: [N, 4]
-
-            # 计算目标Q值
-            gamma = 0.95
-            Q_target = Q_current.copy()  # 先复制一份
-
-            for i in range(len(actions_array)):
-                action = actions_array[i]
-                reward = rewards_array[i]
-                if reward == -0.9:
-                    Q_target[i, action[0]] = reward
-                else:
-                    Q_target[i, action[0]] = reward + gamma * np.max(Q_next[i])
-            
-
-            for i in range(5):
-                dqn.train_batch_rl(states_array, Q_target, 0.002)
-
-            self.update_display(currDirIdx, iteration)
+                states_array, next_states_array, actions_array, rewards_array = self.add_to_mem_pool(site_state, currDirIdx)
+                Q_target = self.cal_Q_target(states_array, next_states_array, actions_array, rewards_array)
+                if len(self.states) > 100:
+                    sample_inputs, sample_targets = self.get_training_batch(states_array, Q_target)
+                    self.model.train_batch(sample_inputs, sample_targets, self.adjust_lr(iteration))
+                self.update_display(currDirIdx, iteration)
+            except KeyboardInterrupt as e:
+                break
+    
         if self.render == True:
             pygame.quit()
-        dqn.save_plots()
+        self.model.save_plots()
+        self.model.save_weights()
 
 
     def reset_loop(self, iteration):
         if self.render == True:
             self.screen.fill("yellow")
-        self.reward = -0.01
+        self.reward = 0
+        if self.done == True:
+            self.collection_dist = None
+        self.done = False
         # Update matrix, and object on matrix based on snake, and collectible state
         site_state = create_matrix(self.snake, self.collectible, self.SIZE)
+        
         return site_state
 
 
     def check_self_collision(self, new_pos):
-        for node in self.snake:
-            if new_pos[0] == node[0] and new_pos[1] == node[1]:
-                self.reward = -0.9
-                break
+        if new_pos in self.snake:
+            self.reward = -50
+            self.done = True
+
+    @staticmethod
+    def dist(loc1, loc2):
+        return ((loc2[0] - loc1[0])**2 + (loc2[1] - loc1[1])**2)**0.5
+
+    def handle_step(self, new_pos):
+        #Check if game end
+        self.check_self_collision(new_pos)
+        self.check_out_of_bounds(new_pos)
+
+        # if game end init, otherwise try to collect item, add reward if snake gets closer to apple
+        if self.done != True:
+            self.collect_item(new_pos)
+            curr_collection_dist = min(SnakeGame.dist(self.collectible[0], new_pos), SnakeGame.dist(self.collectible[1], new_pos))
+            if self.collection_dist is None:
+                self.collection_dist = curr_collection_dist
+            elif self.collection_dist > curr_collection_dist:
+                self.reward += min(5, 0.1 * (self.collection_dist - curr_collection_dist))
+                self.collection_dist = curr_collection_dist
+            else:
+                self.reward += min(5, 0.1 * (self.collection_dist - curr_collection_dist))
+            return 0
+        else:
+            self.snake, self.collectible, self.currDir, self.player_pos = init_state()
+            return 1
 
 
     def collect_item(self, new_pos):
+        self.snake.insert(0, new_pos)
         hit_collectible = False
         for i, item in enumerate(self.collectible):
             if new_pos[0] == item[0] and new_pos[1] == item[1]:
                 hit_collectible = True
                 self.collectible.pop(i)
-                self.reward = 2
+                self.reward = 20
                 add_collectible(self.collectible, self.snake, self.SIZE)
+                # self.collection_dist = None
                 break
         # if not hit a collectible, remove the last node, to keep snake length
         if hit_collectible == False:
             self.snake.pop()
+        self.player_pos = new_pos
 
         
     def update_display(self, currDir, iteration):
         if self.render == True:
             draw_snake(self.screen, self.snake, self.radius)
             draw_item(self.screen, self.collectible, self.radius)
-        print("[ITER]", iteration, "[DIR]", currDir, "[SCORE]", self.reward, "[MEM_LEN]", len(self.states), end="")
-        print(" [SNAKE]", end="")
-        for i in range(len(self.snake)):
-            print("=", end="")
+        if self.done == True:
+            iteration -= 1
+        print(f"[ITER] {iteration:4d} [DIR] {currDir} [REWARD] {self.reward:6.2f} [MEM_LEN] {len(self.states):4d}", end="")
+        print(" [SNAKE] ", end="")
+        len_snake = len(self.snake)
+        if len_snake > self.max_len:
+            self.max_len = len_snake
+        print(self.max_len, " ", end="")
+        for i in range(len_snake):
+            if i == 0:
+                print("<", end="")
+            else:   
+                print("-", end="")
         print()
         if self.render == True:
             pygame.display.flip()
@@ -164,7 +227,8 @@ class SnakeGame():
     
     def check_out_of_bounds(self, new_pos) -> bool:
         if new_pos[0] >= self.SIZE or new_pos[0] <= 0 or new_pos[1] >= self.SIZE or new_pos[1] <= 0:
-            self.reward = -0.9
+            self.reward = -50
+            self.done = True
             return True
         return False
     
@@ -190,12 +254,9 @@ class SnakeGame():
                 dirIdx = 2 # dirLeft
             elif event.key == pygame.K_d: # and player_pos[0] + 1 <= ground_size:
                 dirIdx = 3 # dirRight
-            elif event.key == pygame.K_q:
-                if self.tick_time > 50:
-                    self.tick_time -= 50
-                else:
-                    self.tick_time = 10
+            elif event.key == pygame.K_q: # slow down movement for observation
+                self.tick_time = 5
             elif event.key == pygame.K_e:
-                self.tick_time += 50
+                self.tick_time = 5000
             return dirIdx
         return None
