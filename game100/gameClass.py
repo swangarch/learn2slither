@@ -24,9 +24,11 @@ class SnakeGame():
         self.hit = False
         self.tick_time = 5000
         self.reward = 0
+        self.site_state = create_matrix(self.snake, self.collectible, self.SIZE)
+        print(self.site_state.reshape((self.SIZE, self.SIZE)))
 
         # memory pool
-        self.memlen_max = 1500
+        self.memlen_max = 500
         self.states = deque(maxlen=self.memlen_max)
         self.actions = deque(maxlen=self.memlen_max)
         self.rewards = deque(maxlen=self.memlen_max)
@@ -71,8 +73,7 @@ class SnakeGame():
         self.states.append(site_state)
         self.actions.append(currDirIdx)
         self.rewards.append(self.reward)
-        vec_state = self.build_state()
-        self.after_states.append(vec_state)
+        self.after_states.append(create_matrix(self.snake, self.collectible, self.SIZE))
         self.dones.append(self.done)
 
         # convert to numpy arr
@@ -83,7 +84,7 @@ class SnakeGame():
         return states_array, next_states_array, actions_array, rewards_array
 
 
-    def get_training_batch(self, inputs, target, batch_size=64):
+    def get_training_batch(self, inputs, target, batch_size=100):
         total_samples = inputs.shape[0]
     
         # random choose some sample for mini batch training, or use all sample, if ther are not many
@@ -96,56 +97,31 @@ class SnakeGame():
             sampled_target = target[indices]
         return sampled_inputs, sampled_target
 
-
     def adjust_lr(self, iteration):
         if iteration > 10000:
-            lr = 0.0005
-        elif iteration > 5000:
             lr = 0.001
-        else:
+        elif iteration > 5000:
             lr = 0.002
+        else:
+            lr = 0.005
         return lr
-    
-
-    def build_state(self):
-        l_snake = len(self.snake)
-        states = []
-        i = 0
-        while(i < len(self.collectible)):
-            states.append(self.collectible[i][0] / 10.0) 
-            states.append(self.collectible[i][1] / 10.0) 
-            i += 1
-        i = 0
-        while i < l_snake:
-            states.append(self.snake[i][0] / 10.0)
-            states.append(self.snake[i][1] / 10.0)
-            i += 1
-        while l_snake < 12:
-            states.append(-0.2)
-            states.append(-0.2)
-            l_snake += 1
-        # print(states)
-        return np.array(states).reshape(-1, 1)
-
 
     def loop(self, running):
         iteration = 0
         while running:
             try:
-                self.reset_loop(iteration)
+                site_state = self.reset_loop(iteration)
                 if self.render == True:
                     running, dirIdx = self.event_handler()
 
-                vec_state = self.build_state()
-
                 # determine if choose random step or choose a step predicted by dqn
-                self.epsilon = max(0.05, self.epsilon * 0.997)
+                self.epsilon = max(0.05, self.epsilon * 0.995)
 
-                currDir, currDirIdx = self.select_move_dir(vec_state)
+                currDir, currDirIdx = self.select_move_dir(site_state)
                 new_pos = [self.player_pos[0] + currDir[0], self.player_pos[1] + currDir[1]]
                 iteration += self.handle_step(new_pos)
 
-                states_array, next_states_array, actions_array, rewards_array = self.add_to_mem_pool(vec_state, currDirIdx)
+                states_array, next_states_array, actions_array, rewards_array = self.add_to_mem_pool(site_state, currDirIdx)
                 Q_target = self.cal_Q_target(states_array, next_states_array, actions_array, rewards_array)
                 if len(self.states) > 100:
                     sample_inputs, sample_targets = self.get_training_batch(states_array, Q_target)
@@ -167,10 +143,15 @@ class SnakeGame():
         if self.done == True:
             self.collection_dist = None
         self.done = False
+        # Update matrix, and object on matrix based on snake, and collectible state
+        site_state = create_matrix(self.snake, self.collectible, self.SIZE)
+        
+        return site_state
+
 
     def check_self_collision(self, new_pos):
         if new_pos in self.snake:
-            self.reward = -30
+            self.reward = -50
             self.done = True
 
     @staticmethod
@@ -189,10 +170,10 @@ class SnakeGame():
             if self.collection_dist is None:
                 self.collection_dist = curr_collection_dist
             elif self.collection_dist > curr_collection_dist:
-                self.reward += min(5, 0.5 * (self.collection_dist - curr_collection_dist))
+                self.reward += min(5, 0.1 * (self.collection_dist - curr_collection_dist))
                 self.collection_dist = curr_collection_dist
             else:
-                self.reward += min(5, 0.5 * (self.collection_dist - curr_collection_dist))
+                self.reward += min(5, 0.1 * (self.collection_dist - curr_collection_dist))
             return 0
         else:
             self.snake, self.collectible, self.currDir, self.player_pos = init_state()
@@ -206,8 +187,9 @@ class SnakeGame():
             if new_pos[0] == item[0] and new_pos[1] == item[1]:
                 hit_collectible = True
                 self.collectible.pop(i)
-                self.reward = 15 + 0.2 * len(self.snake)
+                self.reward = 20
                 add_collectible(self.collectible, self.snake, self.SIZE)
+                # self.collection_dist = None
                 break
         # if not hit a collectible, remove the last node, to keep snake length
         if hit_collectible == False:
@@ -245,7 +227,7 @@ class SnakeGame():
     
     def check_out_of_bounds(self, new_pos) -> bool:
         if new_pos[0] >= self.SIZE or new_pos[0] <= 0 or new_pos[1] >= self.SIZE or new_pos[1] <= 0:
-            self.reward = -30
+            self.reward = -50
             self.done = True
             return True
         return False

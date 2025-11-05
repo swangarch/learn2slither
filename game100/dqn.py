@@ -4,7 +4,7 @@ import numpy as np
 
 def create_dqn():
     conf = {
-        "shape": [28, 100, 32, 10, 4],
+        "shape": [100, 64, 32, 10, 4],
         "activation_funcs": ["relu", "relu", "relu", "none"],
         "weights_init": ["he", "he", "he", "he"],
         "loss": "MeanSquareError",
