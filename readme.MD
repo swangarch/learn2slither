@@ -12,7 +12,7 @@ The agent learns to maximize its snake length through reinforcement learning, im
 
 ## Features
 
-- Self built Snake environment for training and testing  
+- Self built 10 x 10 Snake environment for training and testing  
 - Implementation of a **Deep Q-Network (DQN)**  
 - Core neural network (MLP) built from scratch using **NumPy**  
 - Replay memory and epsilon-greedy exploration  
@@ -48,5 +48,17 @@ make train-off # train without visualization
 
 make train-off-load # train without visualization but with pre-trained weights
 
+make train-play # train without random move, loading the pre-trained weights, to evaluate the training model
+
 ```
 During the training, you can press Q to slow down the training progress to observe, and E to resume.
+
+## Enviroment
+
+Three different environment representations are used for DQN to compare performance:
+
+- Input: 100 dimensions — a flattened 10×10 map; the network outputs 4 Q-values (for 4 directions).
+
+- Input: Vector of coordinates including snake head, body parts, and food positions; compact and efficient for small maps.
+
+- Input: Feature vector based on relative positions (e.g., distance and direction to food, wall proximity, safe moves); lightweight and fast to train.
