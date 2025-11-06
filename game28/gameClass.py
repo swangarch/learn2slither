@@ -24,7 +24,6 @@ class SnakeGame():
         self.hit = False
         self.tick_time = 5000
         self.reward = 0
-
         # memory pool
         self.memlen_max = 1500
         self.states = deque(maxlen=self.memlen_max)
@@ -32,10 +31,10 @@ class SnakeGame():
         self.rewards = deque(maxlen=self.memlen_max)
         self.after_states = deque(maxlen=self.memlen_max)
         self.dones = deque(maxlen=self.memlen_max)
-        
+        # hyper parameters
         self.epsilon = 1
         self.randMove = randMove
-        self.gamma = 0.9
+        self.gamma = 0.95
 
         self.collection_dist = None
         self.done = False
@@ -46,7 +45,7 @@ class SnakeGame():
 
 
     def select_move_dir(self, site_state):
-        self.epsilon = max(0.05, self.epsilon * 0.997)
+        self.epsilon = max(0.05, self.epsilon * 0.9997)
         if self.randMove == False:
             currDirIdx = self.pred_direction(self.model, site_state)
         elif rd.random() > self.epsilon:
@@ -103,43 +102,40 @@ class SnakeGame():
     
     def adjust_lr(self, iteration):
         if iteration > 10000:
-            lr = 0.005
+            lr = 0.002
         elif iteration > 5000:
-            lr = 0.01
+            lr = 0.005
         else:
-            lr = 0.02
+            lr = 0.01
         return lr
     
 
     def build_state(self):
+        l_snake = len(self.snake)
         states = []
-        for x in self.SIZE:
-            if [x, self.snake[0]] in self.collectible:
-                    states.append()
-                    states.append()
-        
-
-        # l_snake = len(self.snake)
-        # states = []
-        # i = 0
-        # while(i < len(self.collectible)):
-        #     states.append(self.collectible[i][0] / 10.0) 
-        #     states.append(self.collectible[i][1] / 10.0) 
-        #     i += 1
-        # i = 0
-        # while i < l_snake:
-        #     states.append(self.snake[i][0] / 10.0)
-        #     states.append(self.snake[i][1] / 10.0)
-        #     i += 1
-        # while l_snake < 12:
-        #     states.append(-0.05)
-        #     states.append(-0.05)
-        #     l_snake += 1
+        i = 0
+        while(i < len(self.collectible)):
+            states.append(self.collectible[i][0] / 10.0) 
+            states.append(self.collectible[i][1] / 10.0) 
+            i += 1
+        i = 0
+        while i < l_snake:
+            if i >= 12:
+                break
+            states.append(self.snake[i][0] / 10.0)
+            states.append(self.snake[i][1] / 10.0)
+            i += 1
+        while l_snake < 12:
+            states.append(-0.05)
+            states.append(-0.05)
+            l_snake += 1
         return np.array(states).reshape(-1, 1)
 
 
     def loop(self, running):
         iteration = 0
+        move_count = 0
+        self.model.plt.ion()
         while running:
             try:
                 self.reset_loop(iteration)
@@ -152,16 +148,26 @@ class SnakeGame():
                 iteration += self.handle_step(new_pos)
 
                 states_array, next_states_array, actions_array, rewards_array = self.add_to_mem_pool(vec_state, currDirIdx)
+                if self.reward > 5:
+                    count = 1
+                    while count > 0:
+                         self.add_to_mem_pool(vec_state, currDirIdx)
+                         count -= 1
                 Q_target = self.cal_Q_target(states_array, next_states_array, actions_array, rewards_array)
                 if len(self.states) > 100:
                     sample_inputs, sample_targets = self.get_training_batch(states_array, Q_target)
-                    self.model.train_batch(sample_inputs, sample_targets, self.adjust_lr(iteration))
+                    self.model.train_batch_rl(move_count, sample_inputs, sample_targets, self.adjust_lr(iteration))
                 self.update_display(currDirIdx, iteration)
+                move_count += 1
             except KeyboardInterrupt as e:
                 break
     
         if self.render == True:
             pygame.quit()
+    
+        self.model.plt.ioff()
+        self.model.plt.show()
+        self.model.plt.close()
         self.model.save_plots()
         self.model.save_weights()
 
@@ -191,16 +197,19 @@ class SnakeGame():
         # if game end init, otherwise try to collect item, add reward if snake gets closer to apple
         if self.done != True:
             self.collect_item(new_pos)
+            if self.reward != 10:
+                self.reward -= 0.02
+            # self.collect_item(new_pos)
             curr_collection_dist = min(SnakeGame.dist(self.collectible[0], new_pos), SnakeGame.dist(self.collectible[1], new_pos))
             if self.collection_dist is None:
                 self.collection_dist = curr_collection_dist
             elif self.collection_dist > curr_collection_dist:
-                if self.reward != 1:
-                    self.reward += min(0.05, 0.005 * (self.collection_dist - curr_collection_dist))
+                if self.reward != 10:
+                    self.reward += min(0.03, 0.005 * (self.collection_dist - curr_collection_dist))
                 self.collection_dist = curr_collection_dist
             else:
-                if self.reward != 1:
-                    self.reward += max(-0.05, 0.005 * (self.collection_dist - curr_collection_dist))
+                if self.reward != 10:
+                    self.reward += max(-0.03, 0.005 * (self.collection_dist - curr_collection_dist))
             return 0
         else:
             self.snake, self.collectible, self.currDir, self.player_pos = init_state()
@@ -214,7 +223,7 @@ class SnakeGame():
             if new_pos[0] == item[0] and new_pos[1] == item[1]:
                 hit_collectible = True
                 self.collectible.pop(i)
-                self.reward = max(0.8 + 0.05 * len(self.snake), 1)
+                self.reward = min(7.8 + 0.2 * len(self.snake), 10)
                 add_collectible(self.collectible, self.snake, self.SIZE)
                 break
         # if not hit a collectible, remove the last node, to keep snake length

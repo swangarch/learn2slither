@@ -4,6 +4,7 @@ from numpy import ndarray as array
 
 
 class DQN(NN):
+    
     def train_batch_rl(self, epoch, inputs:array, truths:array, learning_rate:float=0.01) -> None:
         """Train a batch, the inputs and truths have to be already chunked into batch.
         This function will perform feed foward, back probagation, and gradient descent,
@@ -26,7 +27,7 @@ class DQN(NN):
 
 def create_dqn():
     conf = {
-        "shape": [20, 64, 16, 4],
+        "shape": [28, 64, 16, 4],
         "activation_funcs": ["leaky_relu", "leaky_relu", "none"],
         "weights_init": ["he", "he", "he"],
         "loss": "MeanSquareError",

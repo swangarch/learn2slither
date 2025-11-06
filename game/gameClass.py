@@ -8,7 +8,7 @@ import sys
 
 
 class SnakeGame():
-    def __init__(self, render=False, weights=None, randMove=True):
+    def __init__(self, render=False, weights=None, randMove=True, trainMode=True):
         self.SIZE = 10
         self.render = render
         self.dirs  =  [(0, -1), (0, 1), (-1, 0),  (1, 0)]
@@ -25,7 +25,7 @@ class SnakeGame():
         self.tick_time = 5000
         self.reward = 0
         # memory pool
-        self.memlen_max = 1500
+        self.memlen_max = 5000
         self.states = deque(maxlen=self.memlen_max)
         self.actions = deque(maxlen=self.memlen_max)
         self.rewards = deque(maxlen=self.memlen_max)
@@ -35,6 +35,7 @@ class SnakeGame():
         self.epsilon = 1
         self.randMove = randMove
         self.gamma = 0.95
+        self.trainMode = trainMode
 
         self.collection_dist = None
         self.done = False
@@ -77,7 +78,6 @@ class SnakeGame():
         vec_state = self.build_state()
         self.after_states.append(vec_state)
         self.dones.append(self.done)
-
         # convert to numpy arr
         states_array = np.array(self.states).squeeze(axis=-1)  # shape: [N, SIZE]
         actions_array = np.array(self.actions).reshape(-1, 1)
@@ -88,7 +88,6 @@ class SnakeGame():
 
     def get_training_batch(self, inputs, target, batch_size=64):
         total_samples = inputs.shape[0]
-    
         # random choose some sample for mini batch training, or use all sample, if ther are not many
         if total_samples <= batch_size:
             sampled_inputs = inputs
@@ -111,27 +110,36 @@ class SnakeGame():
     
 
     def build_state(self):
-        l_snake = len(self.snake)
-        # states_arr = np.zeros((28, 1),dtype=np.float32)
-        states = []
-        i = 0
-        while(i < len(self.collectible)):
-            states.append(self.collectible[i][0] / 10.0) 
-            states.append(self.collectible[i][1] / 10.0) 
-            i += 1
-        i = 0
-        while i < l_snake:
-            if i >= 12:
-                break
-            states.append(self.snake[i][0] / 10.0)
-            states.append(self.snake[i][1] / 10.0)
-            i += 1
-        while l_snake < 12:
-            states.append(-0.05)
-            states.append(-0.05)
-            l_snake += 1
-        return np.array(states).reshape(-1, 1)
+        states = np.zeros(20, dtype=np.float32)
+        for c in self.collectible:
+            if c[0] == self.snake[0][0]:
+                states[c[1]] = -1.0
+            if c[1] == self.snake[0][1]:
+                states[c[0] + 10] = -1.0
+        for node in self.snake[1:]:
+            if node[0] == self.snake[0][0]:
+                states[node[1]] = 0.5
+            if node[1] == self.snake[0][1]:
+                states[node[0] + 10] = 0.5
+        states[self.snake[0][1]] = 1
+        states[self.snake[0][0] + 10] = 1
+        return states.reshape(-1, 1)
 
+    def dup_key_mem(self, vec_state, currDirIdx):
+        if self.reward > 5:
+            count = 1
+            while count > 0:
+                self.add_to_mem_pool(vec_state, currDirIdx)
+                count -= 1
+
+    def training(self, move_count, iteration, states_array, Q_target):
+         if len(self.states) > 1000:
+            sample_inputs, sample_targets = self.get_training_batch(states_array, Q_target)
+            self.model.train_batch_rl(move_count, sample_inputs, sample_targets, self.adjust_lr(iteration))
+
+    def move(self, currDir):
+        new_pos = [self.player_pos[0] + currDir[0], self.player_pos[1] + currDir[1]]
+        return new_pos
 
     def loop(self, running):
         iteration = 0
@@ -143,22 +151,15 @@ class SnakeGame():
                 if self.render == True:
                     running, dirIdx = self.event_handler()
                 vec_state = self.build_state()
-
                 currDir, currDirIdx = self.select_move_dir(vec_state)
-                new_pos = [self.player_pos[0] + currDir[0], self.player_pos[1] + currDir[1]]
-                iteration += self.handle_step(new_pos)
+                iteration += self.handle_step(self.move(currDir))
 
-                states_array, next_states_array, actions_array, rewards_array = self.add_to_mem_pool(vec_state, currDirIdx)
-                if self.reward > 5:
-                    count = 1
-                    while count > 0:
-                         self.add_to_mem_pool(vec_state, currDirIdx)
-                         count -= 1
-                Q_target = self.cal_Q_target(states_array, next_states_array, actions_array, rewards_array)
-                if len(self.states) > 100:
-                    sample_inputs, sample_targets = self.get_training_batch(states_array, Q_target)
-                    self.model.train_batch_rl(move_count, sample_inputs, sample_targets, self.adjust_lr(iteration))
-                self.update_display(currDirIdx, iteration)
+                if self.trainMode == True:
+                    states_array, next_states_array, actions_array, rewards_array = self.add_to_mem_pool(vec_state, currDirIdx)
+                    self.dup_key_mem(vec_state, currDirIdx)
+                    Q_target = self.cal_Q_target(states_array, next_states_array, actions_array, rewards_array)
+                    self.training(move_count, iteration, states_array, Q_target)
+                    self.update_display(currDirIdx, iteration)
                 move_count += 1
             except KeyboardInterrupt as e:
                 break
@@ -171,7 +172,6 @@ class SnakeGame():
         self.model.plt.close()
         self.model.save_plots()
         self.model.save_weights()
-
 
     def reset_loop(self, iteration):
         if self.render == True:
@@ -200,7 +200,6 @@ class SnakeGame():
             self.collect_item(new_pos)
             if self.reward != 10:
                 self.reward -= 0.02
-            # self.collect_item(new_pos)
             curr_collection_dist = min(SnakeGame.dist(self.collectible[0], new_pos), SnakeGame.dist(self.collectible[1], new_pos))
             if self.collection_dist is None:
                 self.collection_dist = curr_collection_dist
@@ -282,15 +281,15 @@ class SnakeGame():
     def manual_control(self, event):
         dirIdx = -1
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_w: #and player_pos[1] - 1 >= 0: 
+            if event.key == pygame.K_w: 
                 dirIdx = 0 # dirUp
-            elif event.key == pygame.K_s: #and player_pos[1] + 1 <= ground_size:
+            elif event.key == pygame.K_s:
                 dirIdx = 1 # dirDown
-            elif event.key == pygame.K_a: # and player_pos[0] - 1 >= 0:
+            elif event.key == pygame.K_a:
                 dirIdx = 2 # dirLeft
-            elif event.key == pygame.K_d: # and player_pos[0] + 1 <= ground_size:
+            elif event.key == pygame.K_d:
                 dirIdx = 3 # dirRight
-            elif event.key == pygame.K_q: # slow down movement for observation
+            elif event.key == pygame.K_q:
                 self.tick_time = 5
             elif event.key == pygame.K_e:
                 self.tick_time = 5000
