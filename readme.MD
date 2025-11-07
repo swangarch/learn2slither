@@ -61,7 +61,9 @@ During training with visualization, press Q to slow down the progress for observ
 
 ## Game enviroment
 
-The Snake game is played on a 10×10 grid, starting with 3 body segments, and two green apples and a red apple are randomly placed on the grid. When one apple is eaten, a new one is generated. Green apple will increase snake length by 1 where red apple will decrease snake length by 1. Snake will be dead if it hits wall or has self collision or length reach 0.
+The Snake game is played on a **10×10** grid, starting with 3 body segments, and **two green apples** and **one red apple** are randomly placed on the grid. When one apple is eaten, a new one is generated. Green apple will increase snake length by 1 where red apple will decrease snake length by 1. Snake will be dead if it hits wall or has self collision or length reach 0.
+
+**Special Constraint**: To add some challenge, The snake’s vision is limited to the same row and column as its head. It cannot see or detect anything outside of that line of sight — all other cells remain completely unknown.
 
 Two different environment representations are tesed in the DQN to compare performance:
 
@@ -94,6 +96,7 @@ Two different environment representations are tesed in the DQN to compare perfor
     After training on 100,000 game sessions, the maximum achieved length is 41, with an average around 35–40 (with red apple).
 
 Because the row and column encoding shows significantly better performance, it is used as the default representation in this project.
+
 
 ## Methodology
 
@@ -130,7 +133,6 @@ Where:
 This is like a recursive function - the quality of current action depends on the quality of future actions. Ideally, with a perfect Q-table, the snake would always know which move maximizes future reward expectation.
 
 
-
 ### Reward
 
 The reward is the feedback from the environment that guides learning:
@@ -153,7 +155,7 @@ At the beginning, we have no idea what Q-values should be for each state. The so
 
 ### Why Neural Networks?
 
-If state space has too many possible cases, storing a complete Q-table becomes impractical. For example, with a 20-dimensional continuous state vector, we'd need a lot of memory.
+If state space has too many possible cases, storing a complete Q-table becomes impractical. For example, with a 20-dimensional continuous state vector, we'd need infinite memory.
 
 **Solution: Deep Q-Network (DQN)**
 
