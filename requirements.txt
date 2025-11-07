@@ -5,3 +5,5 @@ matplotlib
 numpy
 
 pygame
+
+flake8

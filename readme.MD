@@ -92,6 +92,8 @@ Two different environment representations are used in the DQN to compare perform
 
     After training on 5,000 game sessions, the maximum achieved length is 33, with an average around 25–30.
 
+    After training on 50,000 game sessions, the maximum achieved length is 45, with an average around 35–40.
+
 Because the row and column encoding shows significantly better performance, it is used as the default representation in this project.
 
 - ## Learning Strategies

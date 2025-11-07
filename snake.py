@@ -3,7 +3,7 @@ import sys
 
 
 def main():
-	try:
+	# try:
 		if len(sys.argv)==2 and sys.argv[1] == "show":
 			sgame = SnakeGame(render=True)
 		elif len(sys.argv)==2 and sys.argv[1] == "none":
@@ -18,10 +18,10 @@ def main():
 		else:
 			raise RuntimeError("Failed to initialize game")
 		sgame.loop(True)
-	except Exception as e:
-		if sgame and sys.argv[1] != "play":
-			sgame.model.save_weights()
-		print("Error:", e)
+	# except Exception as e:
+	# 	if sgame and sys.argv[1] != "play":
+	# 		sgame.model.save_weights()
+	# 	print("Error:", e)
 
 
 if __name__ == "__main__":

@@ -35,12 +35,14 @@ def create_collectible():
 
 def add_collectible(collectible, snake, size):
 	while True:
-		x, y = rd.randint(0, size - 1), rd.randint(0, size - 1)
-		onsnake = False
-		if [x, y] in snake:
-			onsnake = True
-		if onsnake == False:
-			collectible.append([x, y])
+		new_col_pos = [rd.randint(0, size - 1), rd.randint(0, size - 1)]
+		conflict = False
+		if new_col_pos in snake:
+			conflict = True
+		if new_col_pos in collectible:
+			conflict = True
+		if conflict == False:
+			collectible.append(new_col_pos)
 			break
 
 
