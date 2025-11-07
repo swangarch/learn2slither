@@ -11,14 +11,15 @@ def main():
 		elif len(sys.argv)==3:
 			if sys.argv[1] == "show":
 				sgame = SnakeGame(render=True, weights=sys.argv[2])
-			if sys.argv[1] == "none":
+			elif sys.argv[1] == "none":
 				sgame = SnakeGame(render=False, weights=sys.argv[2])
-			if sys.argv[1] == "play":
-				sgame = SnakeGame(render=True, weights=sys.argv[2], randMove=False)
-
+			elif sys.argv[1] == "play":
+				sgame = SnakeGame(render=True, weights=sys.argv[2], trainMode=False)
+		else:
+			raise("Failed to initialize game")
 		sgame.loop(True)
 	except Exception as e:
-		if sgame:
+		if sgame and sys.argv[1] != "play":
 			sgame.model.save_weights()
 		print("Error:", e)
 

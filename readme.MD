@@ -6,7 +6,7 @@ The project is still under optimization.
 
 ## Overview
 
-****Learn2Slither** uses a Deep Q-Network built on a custom **multilayer perceptron (MLP)** — without relying on any deep learning frameworks.
+**Learn2Slither** uses a Deep Q-Network built on a custom **multilayer perceptron (MLP)** — without relying on any deep learning frameworks.
 
 Repo: [[multilayer perceptron]](https://github.com/swangarch/multilayer_perceptron)
 
