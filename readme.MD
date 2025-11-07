@@ -171,7 +171,7 @@ In this project, Deep Q-Network use a 5-layer Multi-Layer Perceptron (MLP):
 
 ### Training Process
 
-1. **Experience Collection**: Snake plays and stores (state, action, reward, next_state) tuples
+1. **Experience Collection**: Snake plays and stores (state, action, reward, next_state)
 2. **Q-Value Prediction**: Network predicts Q-values for current state
 3. **Target Calculation**: Compute target using Q-Learning Formula
 4. **Network Update**: Minimize MSE between predicted and target Q-values
@@ -184,4 +184,4 @@ This approach allows the snake to learn optimal behavior through trial and error
 - Use a replay memory pool of size 5000 to store states and Q-value targets.
 Each step samples a batch of 64 experiences for training.
 - Start with random actions, gradually decreasing epsilon to let model predictions take over, while retaining a small amount of exploration.
-- Since eating an red apple is a low-probability event, successful experiences are duplicated and rewards are increased to balance the dataset, and eat red apple will have bigger reward value.
+- Since eating an green apple is a low-probability event, successful experiences are duplicated and rewards are increased to balance the dataset, and eat green apple will have bigger reward value.
