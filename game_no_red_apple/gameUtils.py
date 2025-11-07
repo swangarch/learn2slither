@@ -6,16 +6,14 @@ from collections import deque
 def draw_snake(screen, snake, radius):
 	for i,node in enumerate(snake):
 		if i == 0:
-			pygame.draw.circle(screen, "orange", pygame.Vector2((node[0] + 0.5) * 2 * radius, (node[1] + 0.5) * 2 * radius), radius)
+			pygame.draw.circle(screen, "red", pygame.Vector2((node[0] + 0.5) * 2 * radius, (node[1] + 0.5) * 2 * radius), radius)
 		else:
 			pygame.draw.circle(screen, "blue", pygame.Vector2((node[0] + 0.5) * 2 * radius, (node[1] + 0.5) * 2 * radius), radius)
 
 
-def draw_item(screen, items, bad_items, radius):
+def draw_item(screen, items, radius):
 	for i,item in enumerate(items):
 		pygame.draw.circle(screen, "green", pygame.Vector2((item[0] + 0.5) * 2 * radius, (item[1] + 0.5) * 2 * radius), radius)
-	for i,bad_item in enumerate(bad_items):
-		pygame.draw.circle(screen, "red", pygame.Vector2((bad_item[0] + 0.5) * 2 * radius, (bad_item[1] + 0.5) * 2 * radius), radius)
 
 
 def create_snake():
@@ -35,22 +33,13 @@ def create_collectible():
 	return collectible
 
 
-def create_bad_collectible():
-	bad_collectible = [
-		[8, 8],
-	]
-	return bad_collectible
-
-
-def add_collectible(collectible, snake, other_collect, size):
+def add_collectible(collectible, snake, size):
 	while True:
 		new_col_pos = [rd.randint(0, size - 1), rd.randint(0, size - 1)]
 		conflict = False
 		if new_col_pos in snake:
 			conflict = True
 		if new_col_pos in collectible:
-			conflict = True
-		if new_col_pos in other_collect:
 			conflict = True
 		if conflict == False:
 			collectible.append(new_col_pos)
@@ -60,9 +49,8 @@ def add_collectible(collectible, snake, other_collect, size):
 def init_state():
 	snake = create_snake()
 	collectible = create_collectible()
-	bad_collectible = create_bad_collectible()
 	currdir = (0, -1)
-	return snake, collectible, bad_collectible, currdir, snake[0]
+	return snake, collectible, currdir, snake[0]
 
 
 def dist(loc1, loc2):

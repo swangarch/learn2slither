@@ -2,7 +2,6 @@
 
 A **reinforcement learning** project that trains an AI agent to play the classic **Snake** game using a **Deep Q-Network (DQN)** implemented from **scratch**.
 
-The project is still under optimization.
 
 ## Overview
 
@@ -55,18 +54,16 @@ make train-off-load
 # train without visualization but with pre-trained weights
 
 make play 
-# evaluate the trained model (no random moves, loads pre-trained weights)
+# evaluate the trained model (no random moves, no weights update, loads pre-trained weights)
 
 ```
 During training with visualization, press Q to slow down the progress for observation, and E to resume.
 
-## Enviroment
+## Game enviroment
 
-The Snake game is played on a 10×10 grid, starting with 3 body segments, and two apples are randomly placed on the grid. When one apple is eaten, a new one is generated.
+The Snake game is played on a 10×10 grid, starting with 3 body segments, and two green apples and a red apple are randomly placed on the grid. When one apple is eaten, a new one is generated. Green apple will increase snake length by 1 where red apple will decrease snake length by 1. Snake will be dead if it hits wall or has self collision or length reach 0.
 
-The neural network takes the current game state as input and predicts the Q-values for all four possible directions.
-
-Two different environment representations are used in the DQN to compare performance:
+Two different environment representations are tesed in the DQN to compare performance:
 
 - #### Input: Vector of coordinates
     Includes snake head, body parts, and food positions. Compact and efficient for small maps.
@@ -90,14 +87,99 @@ Two different environment representations are used in the DQN to compare perform
 
     (20 dimensions total)
 
-    After training on 5,000 game sessions, the maximum achieved length is 33, with an average around 25–30.
+    After training on 5,000 game sessions, the maximum achieved length is 33, with an average around 25–30 (without red apple).
 
-    After training on 50,000 game sessions, the maximum achieved length is 45, with an average around 35–40.
+    After training on 50,000 game sessions, the maximum achieved length is 45, with an average around 35–40 (without red apple).
+
+    After training on 100,000 game sessions, the maximum achieved length is 41, with an average around 35–40 (with red apple).
 
 Because the row and column encoding shows significantly better performance, it is used as the default representation in this project.
 
-- ## Learning Strategies
-    - Use a replay memory pool of size 5000 to store states and Q-value targets.
+## Methodology
+
+### Q-Learning?
+
+The **Q** in Q-Learning refers to **Quality** - it measures the quality (expected future reward) of taking a particular action in a given state.
+
+The core idea is to maintain a Q-table that maps each possible state to the expected reward for each action:
+
+| State \ Action | up  | down | left | right |
+|---------------|-----|------|------|-------|
+| state1        | 5.0 | 3.0  | 1.0  | -1.0  |
+| state2        | 3.2 | 4.5  | 2.1  | 0.5   |
+| state3        | 1.5 | 2.0  | 4.0  | 3.0   |
+| state4        | -1.0| 0.5  | 3.5  | 5.0   |
+| state5        | 2.0 | 1.5  | 0.5  | 3.5   |
+| ...           | ... | ...  | ...  | ...   |
+
+### The Q-Learning Formula
+
+The Q-value is updated using the Bellman equation:
+```
+Q[s, a] = reward + γ · max(Q[s', a'])
+```
+
+Where:
+- `s` = current state
+- `a` = action taken
+- `reward` = immediate reward received from environment
+- `γ` (gamma) = discount factor (how much we value future rewards)
+- `s'` = next state after taking action
+- `max(Q[s', a'])` = maximum Q-value for all possible actions in the next state, we assume the model will always take the best action in the future
+
+This is like a recursive function - the quality of current action depends on the quality of future actions. Ideally, with a perfect Q-table, the snake would always know which move maximizes future reward expectation.
+
+
+
+### Reward
+
+The reward is the feedback from the environment that guides learning:
+
+| Event | Reward | Purpose |
+|-------|--------|---------|
+| Eat green apple  | +1.0 | Encourage collecting good food |
+| Eat red apple | -0.1 | Discourage collecting bad food |
+| Each step (lazy penalty) | -0.01 | Motivate efficiency, prevent wandering |
+| Death  | -1.0 | Strongly discourage self-collision or hitting walls, or reach 0 length |
+
+The snake learns to maximize cumulative reward by eating green apples quickly while avoiding red apples and staying alive.
+
+### Cold Start Problem
+
+At the beginning, we have no idea what Q-values should be for each state. The solution:
+1. **Initialize all Q-values to zero**
+2. **Update gradually through exploration** - start from random movements, record the states and movements, as the snake plays, it discovers which actions lead to good outcomes
+3. **Learn from experience** - each game teaches the model which moves are beneficial
+
+### Why Neural Networks?
+
+If state space has too many possible cases, storing a complete Q-table becomes impractical. For example, with a 20-dimensional continuous state vector, we'd need a lot of memory.
+
+**Solution: Deep Q-Network (DQN)**
+
+Instead of storing a table, we train a neural network to **approximate** the Q-function. The network learns to predict Q-values for any state it encounters.
+
+### Network Architecture
+
+In this project, Deep Q-Network use a 5-layer Multi-Layer Perceptron (MLP):
+
+- **Shape**: `[20, 128, 64, 16, 4]`
+- **Activation Functions**: `["leaky_relu", "leaky_relu", "leaky_relu", "none"]`
+- **Loss Function**: `MeanSquareError`
+
+### Training Process
+
+1. **Experience Collection**: Snake plays and stores (state, action, reward, next_state) tuples
+2. **Q-Value Prediction**: Network predicts Q-values for current state
+3. **Target Calculation**: Compute target using Q-Learning Formula
+4. **Network Update**: Minimize MSE between predicted and target Q-values
+5. **Repeat**: Network gradually learns which actions lead to better outcomes
+
+This approach allows the snake to learn optimal behavior through trial and error, without needing to explore every possible state.
+
+
+## Learning Optimization Strategies
+- Use a replay memory pool of size 5000 to store states and Q-value targets.
 Each step samples a batch of 64 experiences for training.
-    - Start with random actions, gradually decreasing epsilon to let model predictions take over, while retaining a small amount of exploration.
-    - Since eating an apple is a low-probability event, successful experiences are duplicated and rewards are increased to balance the dataset, and eat apple will have bigger reward value.
+- Start with random actions, gradually decreasing epsilon to let model predictions take over, while retaining a small amount of exploration.
+- Since eating an red apple is a low-probability event, successful experiences are duplicated and rewards are increased to balance the dataset, and eat red apple will have bigger reward value.

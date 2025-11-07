@@ -16,7 +16,7 @@ class DQN(NN):
         the process to train the model, this function will visualize loss curve.
         """
         self.train_batch(inputs, truths, learning_rate)    
-        if epoch % 5000 == 0:
+        if epoch % 500 == 0:
             loss_train = loss(mse_loss, truths.T, self.inference(inputs).T)
             self.graph_loss_train.append(loss_train)
             self.graph_epoch.append(epoch)

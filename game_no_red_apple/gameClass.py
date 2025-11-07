@@ -7,7 +7,7 @@ import sys
 
 
 class SnakeGame():
-    def __init__(self, render=False, weights=None, rand_move=True, train_mode=True):
+    def __init__(self, render=False, weights=None, randMove=True, trainMode=True):
         
         # game visual setting
         self.SIZE = 10
@@ -16,13 +16,12 @@ class SnakeGame():
         self.tick_time = 5000
         if self.render == True:
             pygame.init()
-            self.screen = pygame.display.set_mode((self.radius * 2 * self.SIZE + self.radius, 
-                                                   self.radius * 2 * self.SIZE + self.radius))
+            self.screen = pygame.display.set_mode((self.radius * 2 * self.SIZE + self.radius, self.radius * 2 * self.SIZE + self.radius))
             self.clock = pygame.time.Clock()
 
         # game states
         self.dirs  =  [(0, -1), (0, 1), (-1, 0),  (1, 0)]
-        self.snake, self.collectible, self.bad_collectible, self.currDir, self.player_pos = init_state()
+        self.snake, self.collectible, self.currDir, self.player_pos = init_state()
         self.dirIdx = 0
         self.reward = 0
         self.collection_dist = None
@@ -35,26 +34,22 @@ class SnakeGame():
         self.states, self.actions, self.rewards, self.after_states, self.dones = init_mem_pool(self.memlen_max)
         
         # hyper parameters
+        
         self.decay = 0.9999
         self.gamma = 0.95
         self.batch_size = 64
         self.learning_rate = 0.002
-        if rand_move == False:
+        if randMove == False:
             self.epsilon = 0.005
             self.min_exploration_rate = 0.005
         else:
             self.epsilon = 1
             self.min_exploration_rate = 0.05
-
-        # reward and penality setting
-        self.eat_reward = 10
-        self.death_penalty = -1
-        self.lazy_penality = -0.01
-        self.eat_penality = -0.2
+        self.eat_reward = 5
 
         # train mode
-        self.rand_move = rand_move
-        self.train_mode = train_mode
+        self.rand_move = randMove
+        self.train_mode = trainMode
 
         # neural network
         self.model = DQN.create_dqn()
@@ -62,7 +57,7 @@ class SnakeGame():
             self.model.load_weights(weights)
 
 
-    def run(self, running):
+    def loop(self, running):
         iteration = 0
         move_count = 0
         try:
@@ -71,15 +66,15 @@ class SnakeGame():
                 if self.render == True:
                     running, dirIdx = self.event_handler()
                 vec_state = self.build_state()
-                curr_dir, curr_dirIdx = self.select_move_dir(vec_state)
-                iteration += self.handle_step(self.move(curr_dir))
+                currDir, currDirIdx = self.select_move_dir(vec_state)
+                iteration += self.handle_step(self.move(currDir))
 
                 if self.train_mode == True:
-                    self.dup_key_mem(vec_state, curr_dirIdx)
-                    self.add_to_mem(vec_state, curr_dirIdx)
+                    self.dup_key_mem(vec_state, currDirIdx)
+                    self.add_to_mem(vec_state, currDirIdx)
                     self.train(move_count, iteration)
                 self.update_display()
-                iteration = self.train_log(curr_dirIdx, iteration)
+                iteration = self.train_log(currDirIdx, iteration)
                 move_count += 1
         except KeyboardInterrupt as e:
             pass
@@ -129,23 +124,16 @@ class SnakeGame():
 
     def build_state(self):
         states = np.zeros(20, dtype=np.float32)
-        if len(self.snake) == 0:
-            return states.reshape(-1, 1)
         for c in self.collectible:
-            if c[0] == self.snake[0][0]:
-                states[c[1]] = -0.4
-            if c[1] == self.snake[0][1]:
-                states[c[0] + 10] = -0.4
-        for c in self.bad_collectible:
             if c[0] == self.snake[0][0]:
                 states[c[1]] = -1.0
             if c[1] == self.snake[0][1]:
                 states[c[0] + 10] = -1.0
         for node in self.snake[1:]:
             if node[0] == self.snake[0][0]:
-                states[node[1]] = 0.6
+                states[node[1]] = 0.5
             if node[1] == self.snake[0][1]:
-                states[node[0] + 10] = 0.6
+                states[node[0] + 10] = 0.5
         states[self.snake[0][1]] = 1
         states[self.snake[0][0] + 10] = 1
         return states.reshape(-1, 1)
@@ -183,45 +171,39 @@ class SnakeGame():
 
 
     def move(self, currDir):
-        new_pos = [
-                    self.player_pos[0] + currDir[0], 
-                    self.player_pos[1] + currDir[1]
-                ]
+        new_pos = [self.player_pos[0] + currDir[0], self.player_pos[1] + currDir[1]]
         return new_pos
 
 
     def check_self_collision(self, new_pos):
         if new_pos in self.snake:
-            self.reward = self.death_penalty 
+            self.reward = -1
             self.done = True
 
 
     def check_out_of_bounds(self, new_pos) -> bool:
         if new_pos[0] >= self.SIZE or new_pos[0] < 0 or new_pos[1] >= self.SIZE or new_pos[1] < 0:
-            self.reward = self.death_penalty 
+            self.reward = -1
             self.done = True
             return True
         return False
 
 
     def handle_step(self, new_pos):
-        # Check if game end
+        #Check if game end
         self.check_self_collision(new_pos)
         self.check_out_of_bounds(new_pos)
         # if game end init, otherwise try to collect item, add reward if snake gets closer to apple
         if self.done != True:
-            done = self.collect_item(new_pos)
-            if done == True:
-                return 0
-            if self.reward == 0:
-                self.reward += self.lazy_penality
+            self.collect_item(new_pos)
+            self.reward -= 0.01
             return 0
         else:
-            self.snake, self.collectible, self.bad_collectible, self.currDir, self.player_pos = init_state()
+            self.snake, self.collectible, self.currDir, self.player_pos = init_state()
             return 1
 
 
-    def collect_item(self, new_pos) -> bool: # return if snake dead
+    def collect_item(self, new_pos):
         self.snake.insert(0, new_pos)
         hit_collectible = False
         for i, item in enumerate(self.collectible):
@@ -229,35 +211,18 @@ class SnakeGame():
                 hit_collectible = True
                 self.collectible.pop(i)
                 self.reward = self.eat_reward
-                add_collectible(self.collectible, self.snake, self.bad_collectible, self.SIZE)
-                break
-
-        hit_bad_collectible = False
-        for i, item in enumerate(self.bad_collectible):
-            if new_pos[0] == item[0] and new_pos[1] == item[1]:
-                hit_bad_collectible = True
-                self.bad_collectible.pop(i)
-                self.reward = self.eat_penality
-                add_collectible(self.bad_collectible, self.snake, self.collectible, self.SIZE)
+                add_collectible(self.collectible, self.snake, self.SIZE)
                 break
         # if not hit a collectible, remove the last node, to keep snake length
         if hit_collectible == False:
             self.snake.pop()
-        if hit_bad_collectible == True:
-            if len(self.snake) == 0:
-                self.reward = self.death_penalty
-                self.done = True
-                return True
-            else:
-                self.snake.pop()
         self.player_pos = new_pos
-        return False
 
 
     def update_display(self):
         if self.render == True:
             draw_snake(self.screen, self.snake, self.radius)
-            draw_item(self.screen, self.collectible, self.bad_collectible, self.radius)
+            draw_item(self.screen, self.collectible, self.radius)
             pygame.display.flip()
             self.clock.tick(self.tick_time)
 
