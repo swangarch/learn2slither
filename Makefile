@@ -1,17 +1,17 @@
 setup:
 	bash venv.sh
 
-train-play:
-	python game.py play params.json
+play:
+	python snake.py play params.json
 
 train-show:
-	python game.py show
+	python snake.py show
 
 train-load:
-	python game.py show params.json
+	python snake.py show params.json
 
 train-off:
-	python game.py none
+	python snake.py none
 
 train-off-load:
-	python game.py none params.json
+	python snake.py none params.json

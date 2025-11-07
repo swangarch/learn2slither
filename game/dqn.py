@@ -1,5 +1,4 @@
 from neural_network import *
-import numpy as np
 from numpy import ndarray as array
 
 
@@ -12,7 +11,7 @@ class DQN(NN):
     def train_batch_rl(self, epoch, inputs:array, truths:array, learning_rate:float=0.01) -> None:
         """Train a batch, the inputs and truths have to be already chunked into batch.
         This function will perform feed foward, back probagation, and gradient descent,
-        the process to train the model.
+        the process to train the model, this function will visualize loss curve.
         """
         self.train_batch(inputs, truths, learning_rate)    
         if epoch % 500 == 0:

@@ -54,7 +54,7 @@ make train-off
 make train-off-load 
 # train without visualization but with pre-trained weights
 
-make train-play 
+make play 
 # evaluate the trained model (no random moves, loads pre-trained weights)
 
 ```

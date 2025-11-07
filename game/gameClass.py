@@ -39,6 +39,11 @@ class SnakeGame():
         self.gamma = 0.95
         self.batch_size = 64
         self.learning_rate = 0.002
+        if randMove == False:
+            self.min_exploration_rate = 0.005
+            self.epsilon = 0.005
+        else:
+            self.min_exploration_rate = 0.05
         self.eat_reward = 5
 
         # train mode
@@ -52,8 +57,8 @@ class SnakeGame():
 
 
     def select_move_dir(self, site_state):
-        self.epsilon = max(0.05, self.epsilon * self.decay)
-        if self.randMove == False or rd.random() > self.epsilon:
+        self.epsilon = max(self.min_exploration_rate, self.epsilon * self.decay)
+        if rd.random() > self.epsilon:
             currDirIdx = self.pred_direction(self.model, site_state)
         else:
             currDirIdx = rd.randint(0, 3)
@@ -112,7 +117,7 @@ class SnakeGame():
 
 
     def dup_key_mem(self, vec_state, currDirIdx):
-        if self.reward > 5:
+        if self.reward > self.eat_reward / 2.0:
             self.add_to_mem_pool(vec_state, currDirIdx)
             self.add_to_mem_pool(vec_state, currDirIdx)
 
