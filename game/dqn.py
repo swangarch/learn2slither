@@ -1,5 +1,6 @@
 from neural_network import *
 from numpy import ndarray as array
+import os
 
 
 class DQN(NN):
@@ -7,6 +8,7 @@ class DQN(NN):
         super().__init__(shape, activation_functions, init_methods, classification, loss)
 
         self.plt.ion()
+        os.makedirs("visualize", exist_ok=True)
 
     def train_batch_rl(self, epoch, inputs:array, truths:array, learning_rate:float=0.01) -> None:
         """Train a batch, the inputs and truths have to be already chunked into batch.
@@ -37,7 +39,7 @@ class DQN(NN):
             "activation_funcs": ["leaky_relu", "leaky_relu", "leaky_relu", "none"],
             "weights_init": ["he", "he", "he", "he"],
             "loss": "MeanSquareError",
-            "classification": True,
+            "classification": False,
             "animation": "plot",
             "threshold": False,
             "index": True

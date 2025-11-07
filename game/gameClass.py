@@ -47,8 +47,8 @@ class SnakeGame():
         self.eat_reward = 5
 
         # train mode
-        self.randMove = randMove
-        self.trainMode = trainMode
+        self.rand_move = randMove
+        self.train_mode = trainMode
 
         # neural network
         self.model = DQN.create_dqn()
@@ -80,7 +80,7 @@ class SnakeGame():
         return Q_target
 
 
-    def add_to_mem_pool(self, site_state, currDirIdx):
+    def add_to_mem(self, site_state, currDirIdx):
         self.states.append(site_state)
         self.actions.append(currDirIdx)
         self.rewards.append(self.reward)
@@ -118,11 +118,11 @@ class SnakeGame():
 
     def dup_key_mem(self, vec_state, currDirIdx):
         if self.reward > self.eat_reward / 2.0:
-            self.add_to_mem_pool(vec_state, currDirIdx)
-            self.add_to_mem_pool(vec_state, currDirIdx)
+            self.add_to_mem(vec_state, currDirIdx)
+            self.add_to_mem(vec_state, currDirIdx)
 
 
-    def training(self, move_count, iteration):
+    def train(self, move_count, iteration):
          if len(self.states) > 1000:
             indices = rd.sample(range(len(self.states)), min(self.batch_size, len(self.states)))
             states_array = np.array([self.states[i] for i in indices]).squeeze(-1)
@@ -152,10 +152,10 @@ class SnakeGame():
                 currDir, currDirIdx = self.select_move_dir(vec_state)
                 iteration += self.handle_step(self.move(currDir))
 
-                if self.trainMode == True:
+                if self.train_mode == True:
                     self.dup_key_mem(vec_state, currDirIdx)
-                    self.add_to_mem_pool(vec_state, currDirIdx)
-                    self.training(move_count, iteration)
+                    self.add_to_mem(vec_state, currDirIdx)
+                    self.train(move_count, iteration)
                 self.update_display()
                 iteration = self.train_log(currDirIdx, iteration)
                 move_count += 1
@@ -165,7 +165,7 @@ class SnakeGame():
             pygame.quit()
         self.model.close_visual()
         self.model.save_plots()
-        if self.trainMode == True:
+        if self.train_mode == True:
             self.model.save_weights()
 
 
