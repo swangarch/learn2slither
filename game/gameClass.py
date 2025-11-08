@@ -1,5 +1,6 @@
 import pygame
 import numpy as np
+from numpy import ndarray as array
 from game import *
 from .dqn import DQN
 import random as rd
@@ -12,23 +13,30 @@ class SnakeGame():
         # game visual setting
         self.SIZE = 10
         self.render = render
-        self.radius = 20
+        self.radius = 30
         self.tick_time = 5000
         if self.render == True:
             pygame.init()
-            self.screen = pygame.display.set_mode((self.radius * 2 * self.SIZE + self.radius, 
-                                                   self.radius * 2 * self.SIZE + self.radius))
+            x_size = self.radius * 2 * self.SIZE + self.radius
+            y_size = self.radius * 2 * self.SIZE + self.radius
+            self.screen = pygame.display.set_mode((x_size + 300, y_size))
+            pygame.display.set_caption("Duck 2 slither")
             self.clock = pygame.time.Clock()
+            self.load_assets(x_size, y_size)
 
         # game states
         self.dirs  =  [(0, -1), (0, 1), (-1, 0),  (1, 0)]
         self.snake, self.collectible, self.bad_collectible, self.currDir, self.player_pos = init_state()
         self.dirIdx = 0
         self.reward = 0
-        self.collection_dist = None
         self.done = False
-        # max length in all sessions
-        self.max_len = 3
+        self.state = np.zeros(20, dtype=np.float32)
+
+        # game dashboard
+        self.lifetime = 0
+        self.final_score = 0
+        self.max_len = 3 # max length in all sessions
+        self.max_final_score = 0
 
         # memory pool
         self.memlen_max = 5000
@@ -60,13 +68,32 @@ class SnakeGame():
         self.model = DQN.create_dqn()
         if weights is not None:
             self.model.load_weights(weights)
+    
+
+    def load_assets(self, x_size, y_size):
+        self.font1 = pygame.font.Font("./game/assets/fonts/Bungee-Regular.ttf", 13)
+        self.font2 = pygame.font.Font("./game/assets/fonts/Bungee-Regular.ttf", 18)
+        self.font3 = pygame.font.Font("./game/assets/fonts/Chewy-Regular.ttf", 36)
+        img = pygame.image.load("./game/assets/images/background.png")
+        self.background_img = pygame.transform.scale(img, (x_size, y_size))
+        img_red = pygame.image.load("./game/assets/images/fox.png")
+        self.red_img = pygame.transform.scale(img_red, (2 * self.radius, 2 * self.radius))
+        img_green = pygame.image.load("./game/assets/images/egg.png")
+        self.green_img = pygame.transform.scale(img_green, (2 * self.radius, 2 * self.radius))
+        img_head = pygame.image.load("./game/assets/images/duck1.png")
+        self.head_img1 = pygame.transform.scale(img_head, (2 * self.radius, 2 * self.radius))
+        img_head = pygame.image.load("./game/assets/images/duck2.png")
+        self.head_img2 = pygame.transform.scale(img_head, (2 * self.radius, 2 * self.radius))
+        img_body = pygame.image.load("./game/assets/images/duck_baby.png")
+        self.body_img = pygame.transform.scale(img_body, (2 * self.radius, 2 * self.radius))
 
 
-    def run(self, running):
+    def run(self, max_iter=10000):
         iteration = 0
         move_count = 0
+        running = True
         try:
-            while running:
+            while running and iteration < max_iter:
                 self.reset_loop()
                 if self.render == True:
                     running, dirIdx = self.event_handler()
@@ -77,30 +104,35 @@ class SnakeGame():
                 if self.train_mode == True:
                     self.dup_key_mem(vec_state, curr_dirIdx)
                     self.add_to_mem(vec_state, curr_dirIdx)
-                    self.train(move_count, iteration)
-                self.update_display()
+                    self.train(move_count)
+                self.update_display(curr_dirIdx, iteration)
                 iteration = self.train_log(curr_dirIdx, iteration)
                 move_count += 1
+                self.lifetime += 1
+                self.final_score += self.reward
         except KeyboardInterrupt as e:
             pass
         if self.render == True:
             pygame.quit()
+        self.model.save_plot()
         self.model.close_visual()
-        self.model.save_plots()
         if self.train_mode == True:
             self.model.save_weights()
 
 
     def reset_loop(self):
         if self.render == True:
-            self.screen.fill("yellow")
+            self.screen.fill((138, 190, 185))
         self.reward = 0
         if self.done == True:
-            self.collection_dist = None
+            self.lifetime = 0
+            if self.max_final_score < self.final_score:
+                self.max_final_score = self.final_score
+            self.final_score = 0
         self.done = False
 
 
-    def train(self, move_count, iteration):
+    def train(self, move_count):
         if len(self.states) > 1000:
             indices = rd.sample(range(len(self.states)), min(self.batch_size, len(self.states)))
             states_array = np.array([self.states[i] for i in indices]).squeeze(-1)
@@ -127,29 +159,25 @@ class SnakeGame():
         return Q_target
 
 
-    def build_state(self):
-        states = np.zeros(20, dtype=np.float32)
-        if len(self.snake) == 0:
-            return states.reshape(-1, 1)
-        for c in self.collectible:
+    def vec_repr(self, collection: list, value: float):
+        for c in collection:
             if c[0] == self.snake[0][0]:
-                states[c[1]] = -0.4
+                self.state[c[1]] = value
             if c[1] == self.snake[0][1]:
-                states[c[0] + 10] = -0.4
-        for c in self.bad_collectible:
-            if c[0] == self.snake[0][0]:
-                states[c[1]] = -1.0
-            if c[1] == self.snake[0][1]:
-                states[c[0] + 10] = -1.0
-        for node in self.snake[1:]:
-            if node[0] == self.snake[0][0]:
-                states[node[1]] = 0.6
-            if node[1] == self.snake[0][1]:
-                states[node[0] + 10] = 0.6
-        states[self.snake[0][1]] = 1
-        states[self.snake[0][0] + 10] = 1
-        return states.reshape(-1, 1)
+                self.state[c[0] + 10] = value
 
+
+    def build_state(self):
+        self.state *= 0
+        if len(self.snake) == 0:
+            return self.state.reshape(-1, 1)
+        self.vec_repr(self.collectible, -0.4)
+        self.vec_repr(self.bad_collectible, -1.0)
+        self.vec_repr(self.snake[1:], 0.6)
+        self.state[self.snake[0][1]] = 1.0
+        self.state[self.snake[0][0] + 10] = 1.0
+        return self.state.reshape(-1, 1).copy()
+    
 
     def dup_key_mem(self, vec_state, currDirIdx):
         if self.reward > self.eat_reward / 2.0:
@@ -231,7 +259,6 @@ class SnakeGame():
                 self.reward = self.eat_reward
                 add_collectible(self.collectible, self.snake, self.bad_collectible, self.SIZE)
                 break
-
         hit_bad_collectible = False
         for i, item in enumerate(self.bad_collectible):
             if new_pos[0] == item[0] and new_pos[1] == item[1]:
@@ -254,10 +281,117 @@ class SnakeGame():
         return False
 
 
-    def update_display(self):
+    def render_text_block(self, pos, title:str, content:list):
+        color1 = (48, 86, 105)
+        color2 = (193, 120, 90)
+        interval = 25
+        rel_pos = interval
+        draw_text(self.screen, self.font2, title, (pos[0] + 1, pos[1] + 1), color1)
+        draw_text(self.screen, self.font2, title, (pos[0], pos[1]), color2)
+        for c in content:
+            draw_text(self.screen, self.font1, c, (pos[0], pos[1] + rel_pos), color2)
+            rel_pos += interval
+
+
+    def render_dir(self, currDirIdx):
+        dir_posX, dir_posY = 700, 550
+        size = 50
+        interval = size + 2
+        color_bg = (163, 189, 165)
+        color_active = (193, 120, 90)
+        color_shadow = (48, 86, 105)
+        colors = [color_bg, color_bg, color_bg, color_bg]
+        colors[currDirIdx] = color_active
+
+        pygame.draw.rect(self.screen, color_shadow, (dir_posX + interval + 2, dir_posY - interval + 2, size, size), border_radius=15)
+        pygame.draw.rect(self.screen, color_shadow, (dir_posX + 2, dir_posY + 2, size, size), border_radius=15)
+        pygame.draw.rect(self.screen, color_shadow, (dir_posX + interval + 2, dir_posY + 2, size, size), border_radius=15)
+        pygame.draw.rect(self.screen, color_shadow, (dir_posX + interval * 2 + 2, dir_posY + 2, size, size), border_radius=15)
+
+        # -----------------------------------------------------------------------------------
+        pygame.draw.rect(self.screen, colors[0], 
+                            (dir_posX + interval, dir_posY - interval, size, size), 
+                             border_radius=15
+                        )
+        pygame.draw.rect(self.screen, colors[2], 
+                             (dir_posX, dir_posY, size, size), 
+                             border_radius=15
+                        )
+        pygame.draw.rect(self.screen, colors[1], 
+                            (dir_posX + interval, dir_posY, size, size),
+                            border_radius=15
+                        )
+        pygame.draw.rect(self.screen, colors[3], 
+                            (dir_posX + interval * 2, dir_posY, size, size),
+                            border_radius=15
+                        )
+
+
+    def render_bar(self, posX, posY, color, value, max):
+        bar_size = 180
+        bar_len = value / max * bar_size
+        pygame.draw.rect(self.screen, (255, 255, 255), 
+                        (posX , posY, bar_size, 3)
+                    )
+        pygame.draw.rect(self.screen, color, 
+                        (posX , posY, bar_len, 3)
+                    )
+
+
+    def render_view(self, posX, posY):
+        color_map = {
+            -4: (141, 170, 136),
+            -10: (187, 110, 107),
+            6: (120, 155, 180),
+            10: (202, 141, 91), 
+            0: (255, 255, 255)
+        }
+        bar_len = 18
+        for i, item in enumerate(self.state[:10]):
+            pygame.draw.rect(self.screen, color_map[round(float(item) * 10)], (posX + i * bar_len, posY, bar_len, 3))
+        for i, item in enumerate(self.state[10:]):
+            pygame.draw.rect(self.screen, color_map[round(float(item) * 10)], (posX + i * bar_len, posY + 10, bar_len, 3))
+
+
+    def update_display(self, currDirIdx, iteration):
         if self.render == True:
-            draw_snake(self.screen, self.snake, self.radius)
-            draw_item(self.screen, self.collectible, self.bad_collectible, self.radius)
+            self.screen.blit(self.background_img, (0, 0))
+
+            duck_img = self.head_img1 if currDirIdx % 2 == 1 else self.head_img2
+            draw_snake(self.screen, self.snake, self.radius, duck_img, self.body_img)
+            draw_item(self.screen, self.collectible, self.bad_collectible, self.radius, self.green_img, self.red_img)
+            
+            posX, posY = 680, 30
+            color_bg = (183, 229, 205)
+            color1 = (48, 86, 105)
+            color2 = (193, 120, 90)
+
+            pygame.draw.rect(self.screen, color1, (posX - 30 + 5, posY - 20 + 5, 260, 610), width=0, border_radius=15)
+            pygame.draw.rect(self.screen, color_bg, (posX - 30, posY - 20, 260, 610), width=0, border_radius=15)
+            
+            draw_text(self.screen, self.font3, "Duck 2 slither", (posX + 2, posY + 2), color1)
+            draw_text(self.screen, self.font3, "Duck 2 slither", (posX, posY), color2)
+            self.render_text_block((posX, posY + 70), "Mode", [
+                f"{'Training' if self.train_mode else 'Playing'}"
+            ])
+            self.render_text_block((posX, posY + 130), "Stage", [
+                f"Lifetime  {self.lifetime}", f"Snake Size  {len(self.snake)}",
+                f"Instant Reward  {self.reward}", f"Final Score  {self.final_score:.2f}",
+                f"View",
+            ])
+
+            explo_rate = max(self.epsilon, self.min_exploration_rate)
+            self.render_text_block((posX, posY + 300), "Record", [
+                f"Game Session  {iteration}", f"Max Length  {self.max_len}",
+                f"Max Score  {self.max_final_score:.2f}",
+                f"Memory Pool  {len(self.states)} / 5000",
+                f"Exploration Rate  {explo_rate:.2f}",
+            ])
+            self.render_view(posX, posY + 280)
+            self.render_bar(posX, posY + 370, color2, self.max_len, 60)
+            self.render_bar(posX, posY + 420, color2, len(self.states), 5000)
+            self.render_bar(posX, posY + 445, color2, explo_rate, 1)
+            self.render_dir(currDirIdx)
             pygame.display.flip()
             self.clock.tick(self.tick_time)
 

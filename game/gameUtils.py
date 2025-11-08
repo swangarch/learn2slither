@@ -3,19 +3,31 @@ import random as rd
 from collections import deque
 
 
-def draw_snake(screen, snake, radius):
+def draw_snake(screen, snake, radius, head_img, body_img):
 	for i,node in enumerate(snake):
+		posX = (node[0] + 0.5) * 2 * radius
+		posY = (node[1] + 0.5) * 2 * radius
 		if i == 0:
-			pygame.draw.circle(screen, "orange", pygame.Vector2((node[0] + 0.5) * 2 * radius, (node[1] + 0.5) * 2 * radius), radius)
+			screen.blit(head_img, (posX, posY))
 		else:
-			pygame.draw.circle(screen, "blue", pygame.Vector2((node[0] + 0.5) * 2 * radius, (node[1] + 0.5) * 2 * radius), radius)
+			screen.blit(body_img, (posX, posY))
 
 
-def draw_item(screen, items, bad_items, radius):
+def draw_item(screen, items, bad_items, radius, green_img, red_img):
 	for i,item in enumerate(items):
-		pygame.draw.circle(screen, "green", pygame.Vector2((item[0] + 0.5) * 2 * radius, (item[1] + 0.5) * 2 * radius), radius)
+		posX = (item[0] + 0.5) * 2 * radius
+		posY = (item[1] + 0.5) * 2 * radius
+		screen.blit(green_img, (posX, posY))
 	for i,bad_item in enumerate(bad_items):
-		pygame.draw.circle(screen, "red", pygame.Vector2((bad_item[0] + 0.5) * 2 * radius, (bad_item[1] + 0.5) * 2 * radius), radius)
+		posX = (bad_item[0] + 0.5) * 2 * radius
+		posY = (bad_item[1] + 0.5) * 2 * radius
+		screen.blit(red_img, (posX, posY))
+
+
+def draw_text(screen, font, text, pos, color):
+	text_surface = font.render(text, True, color)
+	text_rect = text_surface.get_rect(topleft=pos)
+	screen.blit(text_surface, text_rect)
 
 
 def create_snake():

@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 from game import *
 import sys
 
@@ -17,10 +19,11 @@ def main():
 				sgame = SnakeGame(render=True, weights=sys.argv[2], train_mode=False, rand_move=False)
 		else:
 			raise RuntimeError("Failed to initialize game")
-		sgame.run(True)
+		sgame.run(max_iter=50000)
 	except Exception as e:
 		if sgame and sys.argv[1] != "play":
 			sgame.model.save_weights()
+			sgame.model.plt.close('all')
 		print("Error:", e)
 
 

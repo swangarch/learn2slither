@@ -21,15 +21,28 @@ class DQN(NN):
             self.graph_loss_train.append(loss_train)
             self.graph_epoch.append(epoch)
             self.plt.clf()
-            self.plt.plot(self.graph_epoch, self.graph_loss_train, c="red", label="Loss", lw=1)
-            self.plt.legend(loc="lower left")
-            self.plt.xlabel("Move")
-            self.plt.ylabel("Loss")
+            if len(self.graph_epoch) > 0 and len(self.graph_loss_train) > 0:
+                self.plt.plot(self.graph_epoch, self.graph_loss_train, c="red", label="Loss", lw=1)
+                self.plt.legend(loc="lower left")
+                self.plt.xlabel("Move")
+                self.plt.ylabel("Loss")
+                self.plt.title("Training loss curve")
             self.plt.pause(0.01)
 
     def close_visual(self):
         self.plt.ioff()
         self.plt.show()
+        self.plt.close()
+
+    def save_plot(self):
+        """Show loss func plots and if classification is applied show also accuracy."""
+        self.plt.plot(self.graph_epoch, self.graph_loss_train, c="red", lw=1, label="Loss")
+        self.plt.grid(True, linestyle="--", linewidth=0.7, alpha=0.7)
+        self.plt.title("Loss Curves")
+        self.plt.xlabel("Epochs")
+        self.plt.ylabel("Loss")
+        self.plt.legend(loc="upper right")
+        self.plt.savefig("visualize/loss.png", dpi=300, bbox_inches='tight')
         self.plt.close()
 
     @classmethod

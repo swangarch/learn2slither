@@ -11,9 +11,11 @@ Repo: [[multilayer perceptron]](https://github.com/swangarch/multilayer_perceptr
 
 The agent learns to maximize its snake length through reinforcement learning, improving its policy via experience replay and Q-learning updates.
 
+![demo](image/play.png)
+
 ## Features
 
-- Custom-built 10×10 Snake environment
+- Custom-built 10×10 Snake environment, with dashboard.
 - Implementation of a **Deep Q-Network (DQN)**  
 - Neural network (MLP) built from scratch only using **NumPy**  
 - Replay memory and epsilon-greedy exploration  
@@ -139,14 +141,14 @@ The reward is the feedback from the environment that guides learning:
 
 | Event | Reward | Purpose |
 |-------|--------|---------|
-| Eat green apple  | +1.0 | Encourage collecting good food |
+| Eat green apple  | +10.0 | Encourage collecting good food |
 | Eat red apple | -0.1 | Discourage collecting bad food |
 | Each step (lazy penalty) | -0.01 | Motivate efficiency, prevent wandering |
 | Death  | -1.0 | Strongly discourage self-collision or hitting walls, or reach 0 length |
 
 The snake learns to maximize cumulative reward by eating green apples quickly while avoiding red apples and staying alive.
 
-### Cold Start Problem
+### Training process
 
 At the beginning, we have no idea what Q-values should be for each state. The solution:
 1. **Initialize all Q-values to zero**
@@ -155,7 +157,7 @@ At the beginning, we have no idea what Q-values should be for each state. The so
 
 ### Why Neural Networks?
 
-If state space has too many possible cases, storing a complete Q-table becomes impractical. For example, with a 20-dimensional continuous state vector, we'd need infinite memory.
+As state space has too many possible cases, storing a complete Q-table becomes impractical. For example, with a 20-dimensional continuous state vector, we'd need infinite memory.
 
 **Solution: Deep Q-Network (DQN)**
 
@@ -179,6 +181,14 @@ In this project, Deep Q-Network use a 5-layer Multi-Layer Perceptron (MLP):
 
 This approach allows the snake to learn optimal behavior through trial and error, without needing to explore every possible state.
 
+At the beginning of training, the snake moves almost completely at random.
+It occasionally reaches the apple by chance, but most of the time it dies quickly, and its maximum length rarely exceeds 5.
+
+![demo](image/train_1.png)
+
+As training continues, we can clearly observe that the snake’s maximum length increases, showing that the model is gradually learning how to survive longer and collect more apples.
+
+![demo](image/train_2.png)
 
 ## Learning Optimization Strategies
 - Use a replay memory pool of size 5000 to store states and Q-value targets.
