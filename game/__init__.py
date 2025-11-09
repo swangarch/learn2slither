@@ -1,2 +1,4 @@
 from .gameUtils import *
-from .gameClass import SnakeGame
+from .SnakeGame import SnakeGame
+from .DQN import DQN
+from .IGame import IGame

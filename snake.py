@@ -6,24 +6,30 @@ import sys
 
 def main():
 	try:
+		dqn, game = None, None
 		if len(sys.argv)==2 and sys.argv[1] == "show":
-			sgame = SnakeGame(render=True)
+			game = SnakeGame(render=True)
+			dqn = DQN(game)
 		elif len(sys.argv)==2 and sys.argv[1] == "none":
-			sgame = SnakeGame(render=False)
+			game = SnakeGame(render=False)
+			dqn = DQN(game)
 		elif len(sys.argv)==3:
 			if sys.argv[1] == "show":
-				sgame = SnakeGame(render=True, weights=sys.argv[2])
+				game = SnakeGame(render=True)
+				dqn = DQN(game, weights=sys.argv[2])
 			elif sys.argv[1] == "none":
-				sgame = SnakeGame(render=False, weights=sys.argv[2])
+				game = SnakeGame(render=False)
+				dqn = DQN(game, weights=sys.argv[2])
 			elif sys.argv[1] == "play":
-				sgame = SnakeGame(render=True, weights=sys.argv[2], train_mode=False, rand_move=False)
+				game = SnakeGame(render=True)
+				dqn = DQN(game, weights=sys.argv[2], train_mode=False)
 		else:
 			raise RuntimeError("Failed to initialize game")
-		sgame.run(max_iter=50000)
+		dqn.run(max_iter=50000)
 	except Exception as e:
-		if sgame and sys.argv[1] != "play":
-			sgame.model.save_weights()
-			sgame.model.plt.close('all')
+		if dqn and sys.argv[1] != "play":
+			dqn.model.save_weights()
+			dqn.model.plt.close('all')
 		print("Error:", e)
 
 

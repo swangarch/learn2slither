@@ -15,12 +15,15 @@ The agent learns to maximize its snake length through reinforcement learning, im
 
 ## Features
 
-- Custom-built 10×10 Snake environment, with dashboard.
+- Custom-built 10×10 Snake environment.
+- **User-friendly interface** with real-time visualization of key parameters, training metrics, and game state for intuitive monitoring of the learning process.
 - Implementation of a **Deep Q-Network (DQN)**  
-- Neural network (MLP) built from scratch only using **NumPy**  
-- Replay memory and epsilon-greedy exploration  
+- **Neural network (MLP)** built from scratch only using **NumPy**  
+- **Replay memory** and epsilon-greedy exploration  
 - Visualization of training progress and gameplay
 - Differents training strategies for comparasion
+- **Modular** and **decoupled** architecture: The **DQN**, **game environment**, and **neural network model** are fully decoupled.
+- A unified **IGame interface** is introduced — any game implementing this interface can be trained directly using the same DQN class, enabling easy extension to new environments.
 
 ## Dependencies
 

@@ -3,12 +3,13 @@ from numpy import ndarray as array
 import os
 
 
-class DQN(NN):
+class Model(NN):
     def __init__(self, shape, activation_functions, init_methods, classification = False, loss = "MeanSquareError"):
         super().__init__(shape, activation_functions, init_methods, classification, loss)
 
         self.plt.ion()
         os.makedirs("visualize", exist_ok=True)
+
 
     def train_batch_rl(self, epoch, inputs:array, truths:array, learning_rate:float=0.01) -> None:
         """Train a batch, the inputs and truths have to be already chunked into batch.
@@ -29,10 +30,12 @@ class DQN(NN):
                 self.plt.title("Training loss curve")
             self.plt.pause(0.01)
 
+
     def close_visual(self):
         self.plt.ioff()
         self.plt.show()
         self.plt.close()
+
 
     def save_plot(self):
         """Show loss func plots and if classification is applied show also accuracy."""
@@ -45,8 +48,9 @@ class DQN(NN):
         self.plt.savefig("visualize/loss.png", dpi=300, bbox_inches='tight')
         self.plt.close()
 
+
     @classmethod
-    def create_dqn(cls):
+    def create_model(cls):
         conf = {
             "shape": [20, 128, 64, 16, 4],
             "activation_funcs": ["leaky_relu", "leaky_relu", "leaky_relu", "none"],
@@ -57,9 +61,9 @@ class DQN(NN):
             "threshold": False,
             "index": True
         }
-        dqn = DQN(conf["shape"], get_activation_funcs_by_name(conf["activation_funcs"]), 
+        model = Model(conf["shape"], get_activation_funcs_by_name(conf["activation_funcs"]), 
                     conf["weights_init"],
                     classification=conf["classification"],
                     loss=conf["loss"]
                 )
-        return dqn
+        return model
