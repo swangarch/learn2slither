@@ -49,6 +49,8 @@ class SnakeGame(IGame):
         self._final_score = 0
         self._max_len = 3 # max length in all sessions
         self._max_final_score = 0
+        self._total_len = 0
+        self._session = 1
         
         self._eat_reward = 10
         self._death_penalty = -1
@@ -86,6 +88,7 @@ class SnakeGame(IGame):
             running, dirIdx = self.event_handler()
         self._reward = 0
         if self._done == True:
+            self._session += 1
             self._lifetime = 0
             if self._max_final_score < self._final_score:
                 self._max_final_score = self._final_score
@@ -156,6 +159,7 @@ class SnakeGame(IGame):
                 self._reward += self._lazy_penality
             return 0
         else:
+            self._total_len += len(self._snake)
             self._snake, self._collectible, self._bad_collectible, self._currDir, self._player_pos = init_state()
             return 1
 
@@ -285,7 +289,7 @@ class SnakeGame(IGame):
                 f"{'Training' if self._train_mode else 'Playing'}"
             ])
             self.render_text_block((posX, posY + 130), "Stage", [
-                f"Lifetime  {self._lifetime}", f"Snake Size  {mem_len}",
+                f"Lifetime  {self._lifetime}", f"Snake Size  {len(self._snake)}",
                 f"Instant Reward  {self._reward}", f"Final Score  {self._final_score:.2f}",
                 f"View",])
 
@@ -338,4 +342,5 @@ class SnakeGame(IGame):
         if len_snake > self._max_len:
             self._max_len = len_snake
         snake = ''.join(('<' if i == 0 else '-') for i in range(len_snake))
-        return(f"[SNAKE] {self._max_len}  {snake}")
+        ave_len = int(self._total_len / self._session)
+        return(f"[SNAKE] (max {self._max_len:2d}  avg {ave_len:2d})  {snake}")

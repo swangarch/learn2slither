@@ -1,6 +1,6 @@
 import numpy as np
 from game import *
-from .model import Model
+from .Model import Model
 import random as rd
 
 
