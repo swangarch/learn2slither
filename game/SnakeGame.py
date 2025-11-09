@@ -48,9 +48,9 @@ class SnakeGame(IGame):
         self._lifetime = 0
         self._final_score = 0
         self._max_len = 3 # max length in all sessions
+        self._session_max_len = 3
         self._max_final_score = 0
         self._total_len = 0
-        self._session = 1
         
         self._eat_reward = 10
         self._death_penalty = -1
@@ -88,7 +88,8 @@ class SnakeGame(IGame):
             running, dirIdx = self.event_handler()
         self._reward = 0
         if self._done == True:
-            self._session += 1
+            self._total_len += self._session_max_len
+            self._session_max_len = 3
             self._lifetime = 0
             if self._max_final_score < self._final_score:
                 self._max_final_score = self._final_score
@@ -159,7 +160,6 @@ class SnakeGame(IGame):
                 self._reward += self._lazy_penality
             return 0
         else:
-            self._total_len += len(self._snake)
             self._snake, self._collectible, self._bad_collectible, self._currDir, self._player_pos = init_state()
             return 1
 
@@ -180,6 +180,8 @@ class SnakeGame(IGame):
                 self._collectible.pop(i)
                 self._reward = self._eat_reward
                 add_collectible(self._collectible, self._snake, self._bad_collectible, self._SIZE)
+                if len(self._snake) > self._session_max_len:
+                    self._session_max_len = len(self._snake)
                 break
         hit_bad_collectible = False
         for i, item in enumerate(self._bad_collectible):
@@ -337,10 +339,10 @@ class SnakeGame(IGame):
         return None
 
 
-    def log_info(self):
+    def log_info(self, session):
         len_snake = len(self._snake)
         if len_snake > self._max_len:
             self._max_len = len_snake
         snake = ''.join(('<' if i == 0 else '-') for i in range(len_snake))
-        ave_len = int(self._total_len / self._session)
+        ave_len = int(self._total_len / (session + 1))
         return(f"[SNAKE] (max {self._max_len:2d}  avg {ave_len:2d})  {snake}")

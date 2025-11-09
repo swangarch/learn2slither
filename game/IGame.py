@@ -35,7 +35,7 @@ class IGame(ABC):
 		pass
 
 	@abstractmethod
-	def log_info(self) -> float:
+	def log_info(self, session:int) -> float:
 		"""Return customized log info of game of each action."""
 		pass
 

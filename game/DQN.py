@@ -116,5 +116,5 @@ class DQN():
 
 
     def train_log(self, currDir, session):
-        print(f"[SESSION] {session:4d} [ACTION] {currDir} [REWARD] {self.game.reward:6.2f} [MEM_LEN] {len(self.states):4d} {self.game.log_info()}")
+        print(f"[SESSION] {session:4d} [ACTION] {currDir} [REWARD] {self.game.reward:6.2f} [MEM_LEN] {len(self.states):4d} {self.game.log_info(session)}")
         return session
