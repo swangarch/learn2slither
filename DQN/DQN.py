@@ -1,16 +1,15 @@
 import numpy as np
 from game import *
-from .Model import Model
 import random as rd
 
 
 class DQN():
-    def __init__(self, game, weights=None, train_mode=True):
+    def __init__(self, game, model, weights=None, train_mode=True):
         
         # game visual setting
         self.game = game
         # neural network
-        self.model = Model.create_model()
+        self.model = model
         if weights is not None:
             self.model.load_weights(weights)
         # memory pool

@@ -1,28 +1,30 @@
 #!/usr/bin/python3
 
 from game import *
+from DQN import Model, DQN
 import sys
 
 
 def main():
 	try:
+		model = Model.create_model()
 		dqn, game = None, None
 		if len(sys.argv)==2 and sys.argv[1] == "show":
 			game = SnakeGame(render=True)
-			dqn = DQN(game)
+			dqn = DQN(game, model)
 		elif len(sys.argv)==2 and sys.argv[1] == "none":
 			game = SnakeGame(render=False)
-			dqn = DQN(game)
+			dqn = DQN(game, model)
 		elif len(sys.argv)==3:
 			if sys.argv[1] == "show":
 				game = SnakeGame(render=True)
-				dqn = DQN(game, weights=sys.argv[2])
+				dqn = DQN(game, model, weights=sys.argv[2])
 			elif sys.argv[1] == "none":
 				game = SnakeGame(render=False)
-				dqn = DQN(game, weights=sys.argv[2])
+				dqn = DQN(game, model, weights=sys.argv[2])
 			elif sys.argv[1] == "play":
 				game = SnakeGame(render=True)
-				dqn = DQN(game, weights=sys.argv[2], train_mode=False)
+				dqn = DQN(game, model, weights=sys.argv[2], train_mode=False)
 		else:
 			raise RuntimeError("Failed to initialize game")
 		dqn.run(max_iter=50000)
