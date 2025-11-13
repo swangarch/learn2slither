@@ -299,11 +299,11 @@ class SnakeGame(IGame):
             self.render_text_block((posX, posY + 300), "Record", [
                 f"Game Session  {iteration}", f"Max Length  {self._max_len}",
                 f"Max Score  {self._max_final_score:.2f}",
-                f"Memory Pool  {mem_len} / 5000",
+                f"Memory Pool  {mem_len} / 50000",
                 f"Exploration Rate  {explo_rate:.2f}"])
             self.render_view(posX, posY + 280)
             self.render_bar(posX, posY + 370, self._max_len, 60)
-            self.render_bar(posX, posY + 420, mem_len, 5000)
+            self.render_bar(posX, posY + 420, mem_len, 50000)
             self.render_bar(posX, posY + 445, explo_rate, 1)
             self.render_dir(action_idx)
             pygame.display.flip()
