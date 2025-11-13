@@ -27,7 +27,7 @@ def main():
 				dqn = DQN(game, model, weights=sys.argv[2], train_mode=False)
 		else:
 			raise RuntimeError("Failed to initialize game")
-		dqn.run(max_iter=50000)
+		dqn.run(max_iter=1000000)
 	except Exception as e:
 		if dqn and sys.argv[1] != "play":
 			dqn.model.save_weights()
