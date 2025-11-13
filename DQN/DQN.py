@@ -21,8 +21,8 @@ class DQN():
         self.batch_size = 64
         self.learning_rate = 0.002
         if train_mode == False:
-            self.epsilon = 0.005
-            self.min_explo_rate = 0.005
+            self.epsilon = 0.001
+            self.min_explo_rate = 0.001
         else:
             self.epsilon = 1
             self.min_explo_rate = 0.05

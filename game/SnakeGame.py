@@ -146,6 +146,11 @@ class SnakeGame(IGame):
 
 
     def handle_step(self, action_idx):
+        if self._final_score <= -1:
+            self.done = True
+            self._reward = -1
+            self._snake, self._collectible, self._bad_collectible, self._currDir, self._player_pos = init_state()
+            return 1
 
         new_pos = self.move(action_idx)
         # Check if game end

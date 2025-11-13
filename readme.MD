@@ -94,11 +94,11 @@ Two different environment representations are tesed in the DQN to compare perfor
 
     (20 dimensions total)
 
-    After training on 5,000 game sessions, the maximum achieved length is 33, with an average around 25–30 (without red apple).
+    After training on 5,000 game sessions, the maximum achieved length is 33 (without red apple).
 
-    After training on 50,000 game sessions, the maximum achieved length is 45, with an average around 35–40 (without red apple).
+    After training on 50,000 game sessions, the maximum achieved length is 45 (without red apple).
 
-    After training on 100,000 game sessions, the maximum achieved length is 41, with an average around 35–40 (with red apple).
+    After training on 100,000 game sessions, the maximum achieved length is 47, with an average around 22–27 (with red apple).
 
 Because the row and column encoding shows significantly better performance, it is used as the default representation in this project.
 
