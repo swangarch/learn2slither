@@ -13,7 +13,7 @@ class DQN():
         if weights is not None:
             self.model.load_weights(weights)
         # memory pool
-        self.memlen_max = 5000
+        self.memlen_max = 50000
         self.states, self.actions, self.rewards, self.after_states, self.dones = init_mem_pool(self.memlen_max)
         # hyper parameters
         self.decay = 0.9999
@@ -64,7 +64,7 @@ class DQN():
 
 
     def train(self, move_count):
-        if len(self.states) > 1000:
+        if len(self.states) > 5000:
             # get a batch for training
             indices = rd.sample(range(len(self.states)), min(self.batch_size, len(self.states)))
             states_array = np.array([self.states[i] for i in indices]).squeeze(-1)

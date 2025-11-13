@@ -31,6 +31,11 @@ class Model(NN):
             self.plt.pause(0.01)
 
 
+    def sync_params(self, main_model):
+        self.nets = [weights.copy() for weights in main_model.nets]
+        self.biases = [bias.copy() for bias in main_model.biases]
+
+
     def close_visual(self):
         self.plt.ioff()
         self.plt.show()
@@ -67,3 +72,10 @@ class Model(NN):
                     loss=conf["loss"]
                 )
         return model
+    
+
+    @classmethod
+    def copy(cls, other):
+        c = cls(other.net_shape, other.activ_funcs, other.init_methods)
+        c.sync_params(other)
+        return c
