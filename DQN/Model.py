@@ -1,6 +1,7 @@
 from neural_network import *
 from numpy import ndarray as array
 import os
+import json
 
 
 class Model(NN):
@@ -52,6 +53,21 @@ class Model(NN):
         self.plt.legend(loc="upper right")
         self.plt.savefig("visualize/loss.png", dpi=300, bbox_inches='tight')
         self.plt.close()
+
+
+    def save_weights_to(self, path):
+        """Save training weights into a path."""
+
+        weights_li = [ arr.tolist() for arr in self.nets ]
+        biases_li = [ arr.tolist() for arr in self.biases ]
+        model_params = {
+            "shape": self.net_shape,
+            "weights": weights_li,
+            "biases": biases_li,
+        }
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(model_params, f, indent=4)
+        print(f"[Params saved => ({path})]\033[?25h")
 
 
     @classmethod

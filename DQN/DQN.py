@@ -30,8 +30,8 @@ class DQN():
         self.train_mode = train_mode
 
 
-    def run(self, max_iter=10000, running=True):
-        session = 0
+    def run(self, max_iter=10000, running=True, save="params.json"):
+        session = 1
         action_count = 0
         try:
             while running and session < max_iter:
@@ -48,19 +48,19 @@ class DQN():
                 action_count += 1
         except KeyboardInterrupt as e:
             pass
-        self.handle_quit()
+        self.handle_quit(save)
 
 
     def reset_loop(self):
         return self.game.reset()
 
 
-    def handle_quit(self):
+    def handle_quit(self, path):
         self.game.quit_game()
         self.model.save_plot()
         self.model.close_visual()
         if self.train_mode == True:
-            self.model.save_weights()
+            self.model.save_weights_to(path)
 
 
     def train(self, move_count):

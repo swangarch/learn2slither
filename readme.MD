@@ -9,7 +9,7 @@ A **reinforcement learning** project that trains an AI agent to play the classic
 
 Repo: [[multilayer perceptron]](https://github.com/swangarch/multilayer_perceptron)
 
-The agent learns to maximize its snake length through reinforcement learning, improving its policy via experience replay and Q-learning updates.
+The agent learns to maximize its snake length through reinforcement learning, improving its policy via experience replay and Q-learning updates. After training for 100,000 sessions, the snake reached a **maximum** length of **50**, with an **average** length of **25**, demonstrating clear learning progress.
 
 ![demo](image/play.png)
 
@@ -68,7 +68,7 @@ During training with visualization, press Q to slow down the progress for observ
 
 The Snake game is played on a **10×10** grid, starting with 3 body segments, and **two green apples** and **one red apple** are randomly placed on the grid. When one apple is eaten, a new one is generated. Green apple will increase snake length by 1 where red apple will decrease snake length by 1. Snake will be dead if it hits wall or has self collision or length reach 0.
 
-**Special Constraint**: To add some challenge, The snake’s vision is limited to the same row and column as its head. It cannot see or detect anything outside of that line of sight — all other cells remain completely unknown.
+**Special Constraint**: To add some challenge, The snake’s vision is limited to the same row and column as its head. It cannot see or detect anything outside of that line of sight — all other cells remain completely unknown. 
 
 Two different environment representations are tesed in the DQN to compare performance:
 
