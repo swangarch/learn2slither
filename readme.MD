@@ -194,7 +194,11 @@ As training continues, we can clearly observe that the snake’s maximum length 
 ![demo](image/train_2.png)
 
 ## Learning Optimization Strategies
-- Use a replay memory pool of size 5000 to store states and Q-value targets.
+- Use a replay memory pool of size 50000 to store states and Q-value targets.
 Each step samples a batch of 64 experiences for training.
 - Start with random actions, gradually decreasing epsilon to let model predictions take over, while retaining a small amount of exploration.
 - Since eating an green apple is a low-probability event, successful experiences are duplicated and rewards are increased to balance the dataset, and eat green apple will have bigger reward value.
+- Regarding the use of a target network:
+In many DQN implementations, a target network is used to stabilize training by decoupling action selection from target generation.
+However, in my custom Snake environment, the state representation and dynamics are relatively simple and stable. After experimenting with both setups, I found that using a target network did not improve training performance in this specific environment — in fact, training without a target network led to better final behavior.
+Because of this result, the final implementation is without the target network for efficiency and clarity.
