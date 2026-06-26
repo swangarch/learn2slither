@@ -13,22 +13,21 @@ def create_bias(net_shape: tuple, value: int | float) -> list:
     return biases
 
 
-def create_actives(net_shape:tuple, value: int | float) -> list: 
+def create_actives(net_shape: tuple, value: int | float) -> list:
     """Create bias for given network shape."""
-
     actives = []
     for num in net_shape:
         actives.append(np.full(((num), 1), value, dtype=np.float32))
     return actives
 
 
-def forward_layer(weights:array, activations:array, biases:array, activ_func: callable) -> array:
+def forward_layer(weights: array, activations: array,
+                  biases: array, activ_func: callable) -> array:
     """Perform layer forwarding."""
-
     res = weights @ activations + biases
     if activ_func is None:
         return res
-    else: 
+    else:
         return activ_func(res)
 
 
@@ -38,11 +37,14 @@ def init_matrix(shapes: tuple, init_method: tuple) -> list:
     matrixs = []
     for i in range(len(shapes) - 1):
         if init_method[i] == "zero":
-            matrix = np.zeros((shapes[i + 1], shapes[i]), dtype=np.float32)
+            matrix = np.zeros((shapes[i + 1], shapes[i]),
+                              dtype=np.float32)
         elif init_method[i] == "he":
-            matrix = np.random.randn(shapes[i + 1], shapes[i]) * np.sqrt(2.0 / shapes[i])
+            matrix = np.random.randn(shapes[i + 1],
+                                     shapes[i]) * np.sqrt(2.0 / shapes[i])
         elif init_method[i] == "xavier":
-            matrix = np.random.randn(shapes[i + 1], shapes[i]) * np.sqrt(1.0 / shapes[i])
+            matrix = np.random.randn(shapes[i + 1],
+                                     shapes[i]) * np.sqrt(1.0 / shapes[i])
         matrixs.append(matrix)
     return matrixs
 
@@ -53,7 +55,8 @@ def network(net: tuple, init_method: tuple) -> list:
     return init_matrix(net, init_method)
 
 
-def gradient_descent(nets, biases, Wgrads_mean, Bgrads_mean, learning_rate):
+def gradient_descent(nets, biases, Wgrads_mean,
+                     Bgrads_mean, learning_rate) -> None:
     """Perform gradient descent for weights and biases."""
 
     len_nets = len(Wgrads_mean)
@@ -62,19 +65,19 @@ def gradient_descent(nets, biases, Wgrads_mean, Bgrads_mean, learning_rate):
         biases[i] -= learning_rate * Bgrads_mean[i]
 
 
-def loss(func, truth, predict):
+def loss(func: callable, truth: array, predict: array) -> float:
     """Calculate loss."""
 
     return func(truth, predict)
 
 
-def mse_loss(truth: array, predict: array):
+def mse_loss(truth: array, predict: array) -> float:
     """Calculate mean square error loss."""
 
     return 0.5 * np.mean((truth - predict) ** 2)
 
 
-def ce_loss(truth: array, predict: array):
+def ce_loss(truth: array, predict: array) -> float:
     """Calculate categorical cross entropy loss."""
 
     eps = 1e-12
@@ -82,16 +85,17 @@ def ce_loss(truth: array, predict: array):
     return -np.mean(np.sum(truth * np.log(predict), axis=1))
 
 
-def bce_loss(truth: array, predict: array):
+def bce_loss(truth: array, predict: array) -> float:
     """Calculate binary cross entropy loss."""
 
     eps = 1e-12
-    predict = np.clip(predict, eps, 1 - eps)
-    return -np.mean(truth * np.log(predict) + (1 - truth) * np.log(1 - predict))
+    pred = np.clip(predict, eps, 1 - eps)
+    return -np.mean(truth * np.log(pred) + (1 - truth) * np.log(1 - pred))
 
 
-def accuracy_1d(truth: array, predict: array):
-    """Calculate the accuracy, based on truth and prediction, output the raw value from neural network."""
+def accuracy_1d(truth: array, predict: array) -> float:
+    """Calculate the accuracy, based on truth and prediction,
+    output the raw value from neural network."""
 
     truth_flat = truth.reshape(-1)
     predict_flat = predict.reshape(-1)
@@ -100,7 +104,7 @@ def accuracy_1d(truth: array, predict: array):
     return correct / total
 
 
-def shuffle_data(inputs, truths):
+def shuffle_data(inputs: array, truths: array) -> tuple[array]:
     """Random shuffle the inputs and outputs data."""
 
     indices = np.arange(len(inputs))
@@ -110,20 +114,21 @@ def shuffle_data(inputs, truths):
     return inputs_shuffled, truths_shuffled
 
 
-def split_dataset(inputs, truths, ratio=0.8):
-    """Split inputs and truths data into training set and test set"""
+def split_dataset(inputs: array, truths: array,
+                  ratio: float = 0.8) -> tuple[array]:
+    """Split inputs and truths data into training set and test set."""
 
     inputs, truths = shuffle_data(inputs, truths)
     num_data = len(inputs)
     inputs_train = inputs[: int(num_data * ratio) - 1]
     truths_train = truths[: int(num_data * ratio) - 1]
-    inputs_test = inputs[int(num_data * ratio) -1 :]
-    truths_test = truths[int(num_data * ratio) -1 :]
+    inputs_test = inputs[int(num_data * ratio) - 1:]
+    truths_test = truths[int(num_data * ratio) - 1:]
 
     return inputs_train, truths_train, inputs_test, truths_test
 
 
-def cmp_correct(result:array, truth:array, i:int) -> int:
+def cmp_correct(result: array, truth: array, i: int) -> int:
     """Compare the literal result of prediction with truth."""
 
     print(f"IDX {i}  TRUTH {truth} => PRED {result}", end="")
@@ -133,6 +138,3 @@ def cmp_correct(result:array, truth:array, i:int) -> int:
     else:
         print("  \033[31mKO\033[0m")
         return 0
-
-
-

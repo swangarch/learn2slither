@@ -1,6 +1,11 @@
-from .activation_func import relu, leaky_relu, sigmoid, get_activation_funcs_by_name
+from .activation_func import (relu, leaky_relu,
+                              sigmoid,
+                              get_activation_funcs_by_name)
 from .nnClass import NN
-from .nnUtils import *
+from .nnUtils import loss, mse_loss
 
 
-__all__ = ["NN", "relu", "leaky_relu", "sigmoid", "split_dataset", "get_activation_funcs_by_name", "loss", "mse_loss"]
+__all__ = ["NN", "relu", "leaky_relu",
+           "sigmoid", "split_dataset",
+           "get_activation_funcs_by_name",
+           "loss", "mse_loss"]

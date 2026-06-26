@@ -1,7 +1,13 @@
 import pygame
 import numpy as np
-from game import * 
+from .gameUtils import (init_state,
+                        draw_item,
+                        draw_snake,
+                        add_collectible,
+                        draw_text)
 from .IGame import IGame
+import os
+import sys
 
 
 class SnakeGame(IGame):
@@ -10,24 +16,24 @@ class SnakeGame(IGame):
             -4: (141, 170, 136),
             -10: (187, 110, 107),
             6: (120, 155, 180),
-            10: (202, 141, 91), 
+            10: (202, 141, 91),
             0: (255, 255, 255)
         }
-    
     color1 = (48, 86, 105)
     color2 = (193, 120, 90)
     color_bg = (183, 229, 205)
     color_button = (163, 189, 165)
 
-    def __init__(self, render=True, train_mode=True):
-
+    def __init__(self, render: bool = True, train_mode: bool = True) -> None:
+        """Game initialization, including game states init and
+        game visualization init."""
         self._train_mode = train_mode
         # game visual setting
         self._SIZE = 10
         self._render = render
         self._radius = 30
         self._tick_time = 5000
-        if self._render == True:
+        if self._render is True:
             pygame.init()
             x_size = self._radius * 2 * self._SIZE + self._radius
             y_size = self._radius * 2 * self._SIZE + self._radius
@@ -37,8 +43,9 @@ class SnakeGame(IGame):
             self.load_assets(x_size, y_size)
 
         # game states
-        self._dirs  =  [(0, -1), (0, 1), (-1, 0),  (1, 0)]
-        self._snake, self._collectible, self._bad_collectible, self._currDir, self._player_pos = init_state()
+        self._dirs = [(0, -1), (0, 1), (-1, 0),  (1, 0)]
+        (self._snake, self._collectible, self._bad_collectible,
+         self._currDir, self._player_pos) = init_state(self._SIZE)
         self._dirIdx = 0
         self._reward = 0
         self._done = False
@@ -46,50 +53,68 @@ class SnakeGame(IGame):
 
         # game dashboard
         self._lifetime = 0
+        self._max_lifetime = 0
         self._final_score = 0
-        self._max_len = 3 # max length in all sessions
+        self._max_len = 3  # max length in all sessions
         self._session_max_len = 3
         self._max_final_score = 0
         self._total_len = 0
-        
-        self._eat_reward = 10
-        self._death_penalty = -1
-        self._lazy_penality = -0.01
-        self._eat_penality = -0.2
-    
 
-    def load_assets(self, x_size, y_size):
-        self._font1 = pygame.font.Font("./game/assets/fonts/Bungee-Regular.ttf", 13)
-        self._font2 = pygame.font.Font("./game/assets/fonts/Bungee-Regular.ttf", 18)
-        self._font3 = pygame.font.Font("./game/assets/fonts/Chewy-Regular.ttf", 36)
+        self._eat_reward = 10
+        self._death_penalty = -5
+        self._lazy_penality = -0.03
+        self._eat_penality = -1
+
+        sys.stdout.write("\033[?25l")
+        sys.stdout.flush()
+
+    def load_assets(self, x_size: int, y_size: int) -> None:
+        """Load assets for the game, including fonts, and images."""
+        font1 = "./game/assets/fonts/Bungee-Regular.ttf"
+        font2 = "./game/assets/fonts/Chewy-Regular.ttf"
+        self._font1 = pygame.font.Font(font1, 13)
+        self._font2 = pygame.font.Font(font1, 18)
+        self._font3 = pygame.font.Font(font2, 36)
         img = pygame.image.load("./game/assets/images/background.png")
         self._background_img = pygame.transform.scale(img, (x_size, y_size))
         img_red = pygame.image.load("./game/assets/images/fox.png")
-        self._red_img = pygame.transform.scale(img_red, (2 * self._radius, 2 * self._radius))
+        self._red_img = pygame.transform.scale(img_red,
+                                               (2 * self._radius,
+                                                2 * self._radius))
         img_green = pygame.image.load("./game/assets/images/egg.png")
-        self._green_img = pygame.transform.scale(img_green, (2 * self._radius, 2 * self._radius))
+        self._green_img = pygame.transform.scale(img_green,
+                                                 (2 * self._radius,
+                                                  2 * self._radius))
         img_head = pygame.image.load("./game/assets/images/duck1.png")
-        self._head_img1 = pygame.transform.scale(img_head, (2 * self._radius, 2 * self._radius))
+        self._head_img1 = pygame.transform.scale(img_head,
+                                                 (2 * self._radius,
+                                                  2 * self._radius))
         img_head = pygame.image.load("./game/assets/images/duck2.png")
-        self._head_img2 = pygame.transform.scale(img_head, (2 * self._radius, 2 * self._radius))
+        self._head_img2 = pygame.transform.scale(img_head,
+                                                 (2 * self._radius,
+                                                  2 * self._radius))
         img_body = pygame.image.load("./game/assets/images/duck_baby.png")
-        self._body_img = pygame.transform.scale(img_body, (2 * self._radius, 2 * self._radius))
+        self._body_img = pygame.transform.scale(img_body,
+                                                (2 * self._radius,
+                                                 2 * self._radius))
 
-
-    def quit_game(self):
-        if self._render == True:
+    def quit_game(self) -> None:
+        """Handle quit game"""
+        if self._render:
             pygame.quit()
 
-
-    def reset(self):
+    def reset(self) -> bool:
+        """After one step, reset game step."""
         running = True
-        if self._render == True:
+        if self._render:
             self._screen.fill((138, 190, 185))
             running, dirIdx = self.event_handler()
         self._reward = 0
-        if self._done == True:
+        if self._done:
             self._total_len += self._session_max_len
             self._session_max_len = 3
+            if self._lifetime > self._max_lifetime:
+                self._max_lifetime = self._lifetime
             self._lifetime = 0
             if self._max_final_score < self._final_score:
                 self._max_final_score = self._final_score
@@ -97,16 +122,16 @@ class SnakeGame(IGame):
         self._done = False
         return running
 
-
-    def vec_repr(self, collection: list, value: float):
+    def vec_repr(self, collection: list, value: float) -> None:
+        """Convert game states as 1d vector."""
         for c in collection:
             if c[0] == self._snake[0][0]:
                 self._state[c[1]] = value
             if c[1] == self._snake[0][1]:
                 self._state[c[0] + 10] = value
 
-
-    def build_state(self):
+    def build_state(self) -> np.ndarray:
+        """Build a vector of 20 dims, to simulate the snake view."""
         self._state *= 0
         if len(self._snake) == 0:
             return self._state.reshape(-1, 1)
@@ -116,67 +141,104 @@ class SnakeGame(IGame):
         self._state[self._snake[0][1]] = 1.0
         self._state[self._snake[0][0] + 10] = 1.0
         return self._state.reshape(-1, 1).copy()
-    
 
-    def move(self, curr_dirIdx):
+    def print_dir(self, curr_dirIdx: int) -> None:
+        """Print moving direction."""
+        if not self._render:
+            return
+        print('------------')
+        if curr_dirIdx == 0:
+            print("UP   ")
+        elif curr_dirIdx == 1:
+            print("DOWN ")
+        elif curr_dirIdx == 2:
+            print("LEFT ")
+        elif curr_dirIdx == 3:
+            print("RIGHT")
+        print('------------')
+
+    def move(self, curr_dirIdx) -> list[int]:
+        """Snake moves the next step."""
+        if self._render:
+            os.system("clear")
+        self.print_state()
+        self.print_dir(curr_dirIdx)
+
         curr_dir = self._dirs[curr_dirIdx]
         new_pos = [
-                    self._player_pos[0] + curr_dir[0], 
+                    self._player_pos[0] + curr_dir[0],
                     self._player_pos[1] + curr_dir[1]
                 ]
         return new_pos
 
-
-    def check_self_collision(self, new_pos):
+    def check_self_collision(self, new_pos: list[int]) -> None:
+        """Check if new position overlap with snake body."""
         if new_pos in self._snake:
-            self._reward = self._death_penalty 
+            self._reward = self._death_penalty
             self._done = True
 
-
-    def check_out_of_bounds(self, new_pos) -> bool:
-        if new_pos[0] >= self._SIZE or new_pos[0] < 0 or new_pos[1] >= self._SIZE or new_pos[1] < 0:
-            self._reward = self._death_penalty 
+    def check_out_of_bounds(self, new_pos: list[int]) -> bool:
+        """Check if snake head will go out of bounds."""
+        if (
+            new_pos[0] >= self._SIZE or new_pos[0] < 0
+            or new_pos[1] >= self._SIZE or new_pos[1] < 0
+        ):
+            self._reward = self._death_penalty
             self._done = True
             return True
         return False
-    
 
     def mem_num(self) -> int:
+        """If snake eat apple, multiply the number of times this
+        experience occurs in memory pool."""
         return 3 if self._reward > self._eat_reward / 2.0 else 1
 
-
-    def handle_step(self, action_idx):
-        if self._final_score <= -1:
-            self.done = True
-            self._reward = -1
-            self._snake, self._collectible, self._bad_collectible, self._currDir, self._player_pos = init_state()
+    def handle_step(self, action_idx: int):
+        """Handle the events in a step, check collision, eat apples."""
+        if self._final_score <= self._death_penalty:
+            self._done = True
+            self._reward = self._death_penalty
+            (self._snake, self._collectible, self._bad_collectible,
+             self._currDir, self._player_pos) = init_state(self._SIZE)
+            self.print_state()
             return 1
-
         new_pos = self.move(action_idx)
         # Check if game end
         self.check_self_collision(new_pos)
         self.check_out_of_bounds(new_pos)
-        # if game end init, otherwise try to collect item, add reward if snake gets closer to apple
-        if self._done != True:
+        # if game end init, otherwise try to collect item
+        # add reward if snake gets closer to apple
+        if not self._done:
             done = self.collect_item(new_pos)
-            if done == True:
+            self.print_state()
+            if done:
                 return 0
             if self._reward == 0:
                 self._reward += self._lazy_penality
             return 0
         else:
-            self._snake, self._collectible, self._bad_collectible, self._currDir, self._player_pos = init_state()
+            self.print_state()
+            (self._snake, self._collectible, self._bad_collectible,
+             self._currDir, self._player_pos) = init_state(self._SIZE)
             return 1
 
     @property
-    def reward(self):
+    def reward(self) -> float:
+        """Return reward of current step."""
         return self._reward
-    
+
     @property
     def done(self):
+        """Return if current session is done."""
         return self._done
 
-    def collect_item(self, new_pos) -> bool: # return if snake dead
+    @property
+    def action_types(self) -> int:
+        """Return number of possible actions."""
+        return 4
+
+    def collect_item(self, new_pos: list[int]) -> bool:  # return if snake dead
+        """Collect items, return a boolean if a snake is dead."""
         self._snake.insert(0, new_pos)
         hit_collectible = False
         for i, item in enumerate(self._collectible):
@@ -184,7 +246,8 @@ class SnakeGame(IGame):
                 hit_collectible = True
                 self._collectible.pop(i)
                 self._reward = self._eat_reward
-                add_collectible(self._collectible, self._snake, self._bad_collectible, self._SIZE)
+                add_collectible(self._collectible, self._snake,
+                                self._bad_collectible, self._SIZE)
                 if len(self._snake) > self._session_max_len:
                     self._session_max_len = len(self._snake)
                 break
@@ -194,12 +257,13 @@ class SnakeGame(IGame):
                 hit_bad_collectible = True
                 self._bad_collectible.pop(i)
                 self._reward = self._eat_penality
-                add_collectible(self._bad_collectible, self._snake, self._collectible, self._SIZE)
+                add_collectible(self._bad_collectible, self._snake,
+                                self._collectible, self._SIZE)
                 break
         # if not hit a collectible, remove the last node, to keep snake length
-        if hit_collectible == False:
+        if not hit_collectible:
             self._snake.pop()
-        if hit_bad_collectible == True:
+        if hit_bad_collectible:
             if len(self._snake) == 0:
                 self._reward = self._death_penalty
                 self._done = True
@@ -209,96 +273,124 @@ class SnakeGame(IGame):
         self._player_pos = new_pos
         return False
 
-
-    def update_state(self):
+    def update_state(self) -> None:
+        """Update game state."""
         self._lifetime += 1
         self._final_score += self._reward
 
-    
-    def render_text_block(self, pos, title:str, content:list):
+    def render_text_block(self, pos: list[int],
+                          title: str, content: list) -> None:
+        """Render text on a specific position window."""
         interval = 25
         rel_pos = interval
-        draw_text(self._screen, self._font2, title, (pos[0] + 1, pos[1] + 1), SnakeGame.color1)
-        draw_text(self._screen, self._font2, title, (pos[0], pos[1]), SnakeGame.color2)
+        draw_text(self._screen, self._font2, title,
+                  (pos[0] + 1, pos[1] + 1), SnakeGame.color1)
+        draw_text(self._screen, self._font2, title,
+                  (pos[0], pos[1]), SnakeGame.color2)
         for c in content:
-            draw_text(self._screen, self._font1, c, (pos[0], pos[1] + rel_pos), SnakeGame.color2)
+            draw_text(self._screen, self._font1, c,
+                      (pos[0], pos[1] + rel_pos), SnakeGame.color2)
             rel_pos += interval
 
-
-
-    def render_dir(self, action_idx):
+    def render_dir(self, action_idx: int) -> None:
+        """Render move direction on the window."""
         dir_posX, dir_posY = 700, 550
         size = 50
         interval = size + 2
         colors = [
-            SnakeGame.color_button, 
-            SnakeGame.color_button, 
-            SnakeGame.color_button, 
+            SnakeGame.color_button,
+            SnakeGame.color_button,
+            SnakeGame.color_button,
             SnakeGame.color_button
         ]
         colors[action_idx] = SnakeGame.color2
 
-        pygame.draw.rect(self._screen, SnakeGame.color1, (dir_posX + interval + 2, dir_posY - interval + 2, size, size), border_radius=15)
-        pygame.draw.rect(self._screen, SnakeGame.color1, (dir_posX + 2, dir_posY + 2, size, size), border_radius=15)
-        pygame.draw.rect(self._screen, SnakeGame.color1, (dir_posX + interval + 2, dir_posY + 2, size, size), border_radius=15)
-        pygame.draw.rect(self._screen, SnakeGame.color1, (dir_posX + interval * 2 + 2, dir_posY + 2, size, size), border_radius=15)
+        pygame.draw.rect(self._screen, SnakeGame.color1,
+                         (dir_posX + interval + 2, dir_posY - interval + 2,
+                          size, size), border_radius=15)
+        pygame.draw.rect(self._screen, SnakeGame.color1,
+                         (dir_posX + 2, dir_posY + 2, size, size),
+                         border_radius=15)
+        pygame.draw.rect(self._screen, SnakeGame.color1,
+                         (dir_posX + interval + 2, dir_posY + 2,
+                          size, size), border_radius=15)
+        pygame.draw.rect(self._screen, SnakeGame.color1,
+                         (dir_posX + interval * 2 + 2, dir_posY + 2,
+                          size, size), border_radius=15)
 
         # -----------------------------------------------------------------------------------
-        pygame.draw.rect(self._screen, colors[0], 
-                            (dir_posX + interval, dir_posY - interval, size, size), 
-                             border_radius=15)
-        pygame.draw.rect(self._screen, colors[2], 
-                             (dir_posX, dir_posY, size, size), 
-                             border_radius=15)
-        pygame.draw.rect(self._screen, colors[1], 
-                            (dir_posX + interval, dir_posY, size, size),
-                            border_radius=15)
-        pygame.draw.rect(self._screen, colors[3], 
-                            (dir_posX + interval * 2, dir_posY, size, size),
-                            border_radius=15)
+        pygame.draw.rect(self._screen, colors[0],
+                         (dir_posX + interval,
+                         dir_posY - interval, size, size),
+                         border_radius=15)
+        pygame.draw.rect(self._screen, colors[2],
+                         (dir_posX, dir_posY, size, size),
+                         border_radius=15)
+        pygame.draw.rect(self._screen, colors[1],
+                         (dir_posX + interval,
+                         dir_posY, size, size),
+                         border_radius=15)
+        pygame.draw.rect(self._screen, colors[3],
+                         (dir_posX + interval * 2,
+                         dir_posY, size, size),
+                         border_radius=15)
 
-
-    def render_bar(self, posX, posY, value, max):
+    def render_bar(self, posX: int, posY: int, value: float,
+                   max: float) -> None:
+        """Render value bar on the window."""
         bar_size = 180
         bar_len = value / max * bar_size
-        pygame.draw.rect(self._screen, (255, 255, 255), 
-                        (posX , posY, bar_size, 3))
-        pygame.draw.rect(self._screen, SnakeGame.color2, 
-                        (posX , posY, bar_len, 3))
+        pygame.draw.rect(self._screen, (255, 255, 255),
+                         (posX, posY, bar_size, 3))
+        pygame.draw.rect(self._screen, SnakeGame.color2,
+                         (posX, posY, bar_len, 3))
 
-
-    def render_view(self, posX, posY):
+    def render_view(self, posX: int, posY: int) -> None:
+        """Render the snake view on the window."""
         bar_len = 18
         for i, item in enumerate(self._state[:10]):
-            pygame.draw.rect(self._screen, SnakeGame.color_map[round(float(item) * 10)], 
+            pygame.draw.rect(self._screen,
+                             SnakeGame.color_map[round(float(item) * 10)],
                              (posX + i * bar_len, posY, bar_len, 3))
         for i, item in enumerate(self._state[10:]):
-            pygame.draw.rect(self._screen, SnakeGame.color_map[round(float(item) * 10)], 
+            pygame.draw.rect(self._screen,
+                             SnakeGame.color_map[round(float(item) * 10)],
                              (posX + i * bar_len, posY + 10, bar_len, 3))
 
-
-    def update_display(self, action_idx, iteration, epsilon, min_explo_rate, mem_len):
-        if self._render == True:
+    def update_display(self, a_idx: int, iteration: int, epsilon: float,
+                       min_explo_rate: float, mem_len: int) -> None:
+        """Update display of a step."""
+        if self._render:
             posX, posY = 680, 30
 
             self._screen.blit(self._background_img, (0, 0))
 
-            duck_img = self._head_img1 if action_idx % 2 == 1 else self._head_img2
-            draw_snake(self._screen, self._snake, self._radius, duck_img, self._body_img)
-            draw_item(self._screen, self._collectible, self._bad_collectible, self._radius, self._green_img, self._red_img)
-            
-            pygame.draw.rect(self._screen, SnakeGame.color1, (posX - 30 + 5, posY - 20 + 5, 260, 610), width=0, border_radius=15)
-            pygame.draw.rect(self._screen, SnakeGame.color_bg, (posX - 30, posY - 20, 260, 610), width=0, border_radius=15)
-            
-            draw_text(self._screen, self._font3, "Duck 2 slither", (posX + 2, posY + 2), SnakeGame.color1)
-            draw_text(self._screen, self._font3, "Duck 2 slither", (posX, posY), SnakeGame.color2)
+            duck_img = self._head_img1 if a_idx % 2 == 1 else self._head_img2
+            draw_snake(self._screen, self._snake, self._radius,
+                       duck_img, self._body_img)
+            draw_item(self._screen, self._collectible, self._bad_collectible,
+                      self._radius, self._green_img, self._red_img)
+
+            pygame.draw.rect(self._screen, SnakeGame.color1,
+                             (posX - 30 + 5, posY - 20 + 5, 260, 610),
+                             width=0, border_radius=15)
+            pygame.draw.rect(self._screen, SnakeGame.color_bg,
+                             (posX - 30, posY - 20, 260, 610),
+                             width=0, border_radius=15)
+
+            draw_text(self._screen, self._font3, "Duck 2 slither",
+                      (posX + 2, posY + 2), SnakeGame.color1)
+            draw_text(self._screen, self._font3, "Duck 2 slither",
+                      (posX, posY), SnakeGame.color2)
             self.render_text_block((posX, posY + 70), "Mode", [
                 f"{'Training' if self._train_mode else 'Playing'}"
             ])
             self.render_text_block((posX, posY + 130), "Stage", [
-                f"Lifetime  {self._lifetime}", f"Snake Size  {len(self._snake)}",
-                f"Instant Reward  {self._reward}", f"Final Score  {self._final_score:.2f}",
-                f"View",])
+                f"Lifetime  {self._lifetime}",
+                f"Snake Size  {len(self._snake)}",
+                f"Instant Reward  {self._reward}",
+                f"Final Score  {self._final_score:.2f}",
+                "View"])
 
             explo_rate = max(epsilon, min_explo_rate)
             self.render_text_block((posX, posY + 300), "Record", [
@@ -310,12 +402,12 @@ class SnakeGame(IGame):
             self.render_bar(posX, posY + 370, self._max_len, 60)
             self.render_bar(posX, posY + 420, mem_len, 50000)
             self.render_bar(posX, posY + 445, explo_rate, 1)
-            self.render_dir(action_idx)
+            self.render_dir(a_idx)
             pygame.display.flip()
             self._clock.tick(self._tick_time)
 
-
-    def event_handler(self):
+    def event_handler(self) -> tuple[bool, int]:
+        """Hanle game event, and key event."""
         dirIdx = None
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -324,30 +416,64 @@ class SnakeGame(IGame):
             dirIdx = self.manual_control(event)
         return True, dirIdx
 
-
-    def manual_control(self, event):
+    def manual_control(self, event: pygame.event.Event) -> int | bool:
+        """Add manual control logic."""
         dirIdx = -1
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_w: 
-                dirIdx = 0 # dirUp
+            if event.key == pygame.K_w:
+                dirIdx = 0  # dirUp
             elif event.key == pygame.K_s:
-                dirIdx = 1 # dirDown
+                dirIdx = 1  # dirDown
             elif event.key == pygame.K_a:
-                dirIdx = 2 # dirLeft
+                dirIdx = 2  # dirLeft
             elif event.key == pygame.K_d:
-                dirIdx = 3 # dirRight
+                dirIdx = 3  # dirRight
+            elif event.key == pygame.K_r:
+                self._tick_time = 1
             elif event.key == pygame.K_q:
-                self._tick_time = 5
+                self._tick_time = 6
             elif event.key == pygame.K_e:
                 self._tick_time = 5000
             return dirIdx
         return None
 
+    def print_state(self) -> None:
+        """Print state in the terminal."""
+        if not self._render or len(self._snake) == 0:
+            return
+        h = self._snake[0]
+        for j in range(-1, self._SIZE + 1):
+            for i in range(-1, self._SIZE + 1):
+                if (i == -1 or i == self._SIZE) and j == h[1]:
+                    print("W", end="")
+                elif (j == -1 or j == self._SIZE) and i == h[0]:
+                    print("W", end="")
+                elif ([i, j] in self._snake
+                      and [i, j] != self._snake[0]
+                      and (j == h[1] or i == h[0])):
+                    print("S", end="")
+                elif [i, j] == self._snake[0]:
+                    print("H", end="")
+                elif [i, j] in self._collectible and (j == h[1] or i == h[0]):
+                    print("G", end="")
+                elif ([i, j] in self._bad_collectible
+                      and (j == h[1] or i == h[0])):
+                    print("R", end="")
+                elif i == h[0] or j == h[1]:
+                    print("0", end="")
+                else:
+                    print(" ", end="")
+                if i == self._SIZE:
+                    print()
 
-    def log_info(self, session):
+    def log_info(self, session: int) -> str:
+        """Return log info."""
         len_snake = len(self._snake)
         if len_snake > self._max_len:
             self._max_len = len_snake
         snake = ''.join(('<' if i == 0 else '-') for i in range(len_snake))
         ave_len = int(self._total_len / (session + 1))
-        return(f"[SNAKE] (max {self._max_len:2d}  avg {ave_len:2d})  {snake}")
+        info = f'[SNAKE] (MaxLen {self._max_len:2d} '
+        info += f'Avg {ave_len:2d} '
+        info += f'MaxTime {self._max_lifetime})  {snake}'
+        return info
